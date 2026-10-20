@@ -145,7 +145,13 @@ async function expliquer(reponse: Response, cfg: Config): Promise<string> {
     return `Dépôt refusé (${reponse.status}) : la clé de service est absente ou périmée. ${message}`.trim();
   }
   if (reponse.status === 404) {
-    return `Le seau « ${BUCKET} » n'existe pas et n'a pas pu être créé. ${message}`.trim();
+    // Sur le Supabase du VPS, la base (rest.…) et les fichiers (storage.…)
+    // ont chacun leur adresse : pointer SUPABASE_URL sur la base donnait ce
+    // 404, alors que le seau existait bel et bien.
+    return (
+      `Le seau « ${BUCKET} » est introuvable à ${cfg.url}. Si le seau existe, SUPABASE_URL ` +
+      `pointe sans doute sur la base plutôt que sur le stockage (storage.…). ${message}`
+    ).trim();
   }
   return `Dépôt refusé (${reponse.status})${message ? ` — ${message}` : ""}`;
 }

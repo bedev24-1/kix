@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -301,6 +302,14 @@ export const tournaments = mb.table("tournaments", {
   qualifiers: integer("qualifiers").notNull().default(2),
   /** Nombre de places au tableau : 8, 16, 32… Les manquants deviennent des exemptions. */
   size: integer("size").notNull().default(16),
+  /** open | hommes | dames | mixte | juniors | veterans — voir CATEGORIES. */
+  category: text("category").notNull().default("open"),
+  /**
+   * Le tableau principal de l'événement, pour un tableau ajouté (« 64 hommes
+   * + 24 dames » : deux tableaux, une affiche). Il partage la billetterie du
+   * principal au lieu d'en ouvrir une seconde.
+   */
+  parentId: uuid("parent_id").references((): AnyPgColumn => tournaments.id, { onDelete: "set null" }),
   /** Course à N manches gagnantes, au premier tour. Elle s'allonge vers la finale. */
   raceTo: integer("race_to").notNull().default(4),
   /**

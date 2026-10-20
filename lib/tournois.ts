@@ -20,6 +20,25 @@ export const FORMATS: Record<string, string> = {
   poules: "Poules puis tableau",
 };
 
+/**
+ * Pour qui le tableau est ouvert. Un même événement peut en porter plusieurs
+ * (« Open hommes · 64 » et « Dames · 24 ») : un tableau, une catégorie.
+ */
+export const CATEGORIES: Record<string, string> = {
+  open: "Open (tous)",
+  hommes: "Hommes",
+  dames: "Dames",
+  mixte: "Mixte",
+  juniors: "Juniors",
+  veterans: "Vétérans",
+};
+
+/** Les tailles de tableau proposées ; toute autre se saisit à la main. */
+export const TAILLES = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 256];
+
+/** La plus grande taille acceptée : au-delà, ce n'est plus une salle. */
+export const TAILLE_MAX = 512;
+
 export const ETATS: Record<string, string> = {
   brouillon: "Brouillon",
   inscriptions: "Inscriptions ouvertes",

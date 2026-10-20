@@ -61,6 +61,8 @@ export function Field({
   placeholder,
   required,
   min,
+  max,
+  list,
   hint,
   className,
 }: {
@@ -72,6 +74,9 @@ export function Field({
   required?: boolean;
   /** Borne basse d'un champ numérique : le navigateur la fait respecter aussi. */
   min?: number;
+  max?: number;
+  /** Un `<datalist>` de valeurs proposées, sans interdire les autres. */
+  list?: string;
   /** Une ligne sous le champ, pour la règle qu'on ne devine pas. */
   hint?: string;
   className?: string;
@@ -86,6 +91,8 @@ export function Field({
         placeholder={placeholder}
         required={required}
         min={min}
+        max={max}
+        list={list}
         className="h-11 rounded-none border border-line bg-surface px-3 text-[13px] text-ink outline-none focus:border-gold"
       />
       {hint ? <span className="text-[11px] text-muted">{hint}</span> : null}

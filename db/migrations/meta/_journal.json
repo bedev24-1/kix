@@ -302,6 +302,13 @@
       "when": 1790389054749,
       "tag": "0042_suivis_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790389054750,
+      "tag": "0043_categories-tableaux",
+      "breakpoints": true
     }
   ]
 }

@@ -58,7 +58,7 @@ import {
   whepUrl,
 } from "@/lib/stream";
 import { refreshPayment, startPayment, type PaymentKind } from "@/lib/payments/service";
-import { DISCIPLINES as DISCIPLINES_LABELS } from "@/lib/tournois";
+import { CATEGORIES, DISCIPLINES as DISCIPLINES_LABELS, TAILLE_MAX } from "@/lib/tournois";
 import {
   createSession,
   destroySession,
@@ -2279,7 +2279,9 @@ export async function saveTournament(formData: FormData) {
     format: str(formData, "format") === "poules" ? "poules" : "direct",
     groupSize: Math.min(8, Math.max(3, num(formData, "groupSize") || 4)),
     qualifiers: Math.max(1, num(formData, "qualifiers") || 2),
-    size: Math.max(2, num(formData, "size") || 16),
+    // Toute taille : le moteur complète à la puissance de 2 par des exemptions.
+    size: Math.min(TAILLE_MAX, Math.max(2, num(formData, "size") || 16)),
+    category: CATEGORIES[str(formData, "category")] ? str(formData, "category") : "open",
     // Sèche = une partie gagnante. Le tournoi entier suit la même règle, du
     // premier tour à la finale : on ne rallonge pas une sèche en demi-finale.
     // Une « course à 1 partie » saisie à la main est une sèche, et se range
@@ -2310,14 +2312,25 @@ export async function saveTournament(formData: FormData) {
     : undefined;
   const repris = dejaCree(recent?.createdAt) ? recent : undefined;
 
+  // Un tableau ajouté à un événement (« Dames » à côté de l'« Open ») : il
+  // partage l'affiche et la billetterie du tableau principal.
+  const parentId = str(formData, "parentId");
+  const parent = !id && parentId
+    ? (await db.select().from(tournaments).where(eq(tournaments.id, parentId)).limit(1))[0]
+    : undefined;
+  if (parent && auteur.role === "manager" && parent.venueId !== auteur.venueId) redirect("/gerant?refus=1");
+
   const tournoiId = id || repris?.id || uid();
   if (id) await db.update(tournaments).set(values).where(eq(tournaments.id, id));
   else if (!repris) {
     await db.insert(tournaments).values({
       ...values,
+      // Deux tableaux ne peuvent pas porter le même lien.
+      slug: parent ? `${slug}-${values.category}` : slug,
       id: tournoiId,
       organiserId: auteur.id,
       status: "brouillon",
+      ...(parent ? { parentId: parent.id, eventId: parent.eventId, venueId: parent.venueId } : {}),
     });
   }
 
@@ -2334,6 +2347,12 @@ export async function saveTournament(formData: FormData) {
 async function syncTwinEvent(tournamentId: string, formData: FormData) {
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
   if (!t) return;
+  // Un tableau ajouté vit sous l'affiche du principal : c'est lui qui la tient.
+  if (t.parentId) {
+    const principal = (await db.select().from(tournaments).where(eq(tournaments.id, t.parentId)).limit(1))[0];
+    if (principal) await resumerTableaux(principal.id);
+    return;
+  }
   const jumeau = t.eventId
     ? (await db.select().from(events).where(eq(events.id, t.eventId)).limit(1))[0]
     : null;
@@ -2365,12 +2384,31 @@ async function syncTwinEvent(tournamentId: string, formData: FormData) {
 
   if (t.eventId) {
     await db.update(events).set(commun).where(eq(events.id, t.eventId));
+    await resumerTableaux(t.id);
     return;
   }
 
   const eventId = uid();
   await db.insert(events).values({ ...commun, id: eventId, slug: `${t.slug}-spectateurs` });
   await db.update(tournaments).set({ eventId }).where(eq(tournaments.id, tournamentId));
+}
+
+/**
+ * L'affiche d'un événement à plusieurs tableaux dit ce qu'il contient :
+ * « Tournoi 8-ball · Open 64 · Dames 24 ». Sans ça, le public ne voyait que
+ * la taille du premier tableau.
+ */
+async function resumerTableaux(principalId: string) {
+  const principal = (await db.select().from(tournaments).where(eq(tournaments.id, principalId)).limit(1))[0];
+  if (!principal?.eventId) return;
+  const ajoutes = await db.select().from(tournaments).where(eq(tournaments.parentId, principalId));
+  const tous = [principal, ...ajoutes.filter((x) => x.status !== "annule")];
+  const discipline = DISCIPLINES_LABELS[principal.discipline] ?? principal.discipline;
+  const subtitle =
+    tous.length > 1
+      ? `Tournoi ${discipline} · ${tous.map((x) => `${CATEGORIES[x.category] ?? x.category} ${x.size}`).join(" · ")}`
+      : `Tournoi ${discipline} · ${principal.size} joueurs`;
+  await db.update(events).set({ subtitle }).where(eq(events.id, principal.eventId));
 }
 
 /** Ouvrir les candidatures, les clore, annuler. */
@@ -2389,8 +2427,11 @@ export async function setTournamentStatus(id: string, status: string) {
   await db.update(tournaments).set({ status }).where(eq(tournaments.id, id));
 
   // La billetterie spectateurs suit l'état du tournoi — et un tournoi annulé
-  // referme sa soirée au lieu de la laisser « en cours » indéfiniment.
-  if (t.eventId) {
+  // referme sa soirée au lieu de la laisser « en cours » indéfiniment. Un
+  // tableau ajouté n'y touche pas : l'affiche appartient au principal.
+  if (t.parentId) {
+    await resumerTableaux(t.parentId);
+  } else if (t.eventId) {
     await db
       .update(events)
       .set({
