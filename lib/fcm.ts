@@ -42,9 +42,15 @@ type CompteDeService = {
  * refuse une clé qui les garde échappés.
  */
 function compte(): CompteDeService | null {
+  // Les deux variables d'abord — mais seulement si la clé s'y lit : une clé
+  // abîmée par l'hébergeur ne doit pas masquer un JSON posé à côté.
   const separe = compteEnDeuxVariables();
-  if (separe) return separe;
+  if (separe && cleLisible(separe.private_key)) return separe;
+  const json = compteEnJson();
+  return json ?? separe;
+}
 
+function compteEnJson(): CompteDeService | null {
   // Deux noms pour la même chose : `FIREBASE_SERVICE_ACCOUNT_JSON` est celui
   // qu'emploient les autres services de la maison, et un déploiement se fait
   // en recopiant un bloc de variables d'un projet à l'autre. Refuser le nom
@@ -93,15 +99,20 @@ function compteEnDeuxVariables(): CompteDeService | null {
  * à comprendre.
  */
 function remettreLesSauts(cle: string): string {
-  const propre = cle.replace(/\\r\\n|\\n/g, "\n").replace(/\r\n/g, "\n").trim();
+  // `\n`, `\\n`, `\r\n` : autant d'échappements qu'un panneau
+  // d'hébergeur peut en ajouter.
+  const propre = cle.replace(/(\\+r)?\\+n/g, "\n").replace(/\r\n/g, "\n").trim();
 
   const entete = "-----BEGIN PRIVATE KEY-----";
   const pied = "-----END PRIVATE KEY-----";
-  if (!propre.includes(entete)) return propre;
-  if (propre.includes("\n")) return propre.endsWith("\n") ? propre : `${propre}\n`;
+  if (!propre.includes(entete) || !propre.includes(pied)) return propre;
 
-  // Une seule ligne : on la recompose.
-  const corps = propre.slice(propre.indexOf(entete) + entete.length, propre.indexOf(pied)).replace(/\s+/g, "");
+  // On recompose toujours le PEM à partir de son seul corps base64 : tout
+  // autre caractère — espace, antislash, guillemet égaré — est une
+  // blessure du copier-coller, pas une partie de la clé.
+  const corps = propre
+    .slice(propre.indexOf(entete) + entete.length, propre.indexOf(pied))
+    .replace(/[^A-Za-z0-9+/=]/g, "");
   const lignes = corps.match(/.{1,64}/g) ?? [];
   return `${entete}\n${lignes.join("\n")}\n${pied}\n`;
 }
@@ -193,7 +204,10 @@ export async function envoyerFcm(token: string, urgence: "normal" | "high" = "no
     console.error(
       "[mb] La clé privée Firebase est illisible. Recopie la valeur de `private_key` telle qu'elle " +
         "figure dans le fichier .json — avec ses « \\n » — dans FIREBASE_PRIVATE_KEY, ou colle le " +
-        "JSON entier dans FIREBASE_SERVICE_ACCOUNT_JSON. Aucune notification ne partira par Firebase d'ici là.",
+        "JSON entier dans FIREBASE_SERVICE_ACCOUNT_JSON. Aucune notification ne partira par Firebase d'ici là. " +
+        // Rien de secret ici : de quoi voir si la valeur a été tronquée.
+        `(lue : ${sa.private_key.length} caractères, début ${sa.private_key.includes("BEGIN PRIVATE KEY") ? "présent" : "ABSENT"}, ` +
+        `fin ${sa.private_key.includes("END PRIVATE KEY") ? "présente" : "ABSENTE"} ; attendu ≈ 1700)`,
     );
     return refus("FIREBASE_PRIVATE_KEY illisible");
   }
