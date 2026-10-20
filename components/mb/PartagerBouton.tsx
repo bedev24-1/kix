@@ -11,7 +11,9 @@ export function PartagerBouton({ chemin, titre, className }: { chemin: string; t
   const { notify } = useSnackbar();
   const partager = async () => {
     // L'adresse vue par le visiteur, pas celle du serveur derrière le proxy.
-    const url = `${window.location.origin}/rejoindre?vers=${encodeURIComponent(chemin)}`;
+    // La page publique, qui porte l'aperçu (image, jour, prix) : celle de
+    // l'application demande un compte, et l'aperçu montrait la connexion.
+    const url = `${window.location.origin}${chemin}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: titre, text: titre, url });

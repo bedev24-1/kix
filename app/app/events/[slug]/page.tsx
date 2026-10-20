@@ -43,7 +43,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </Link>
           <div className="flex gap-2.5">
             <PartagerBouton
-              chemin={`/app/events/${event.slug}`}
+              chemin={`/e/${event.slug}`}
               titre={event.title}
               className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur"
             />

@@ -32,7 +32,7 @@ export async function PartageTournoi({
     {
       quoi: "Joueurs",
       aide: "Candidature et droit d'inscription",
-      url: `${base}/rejoindre?vers=/app/tournois/${slug}`,
+      url: `${base}/t/${slug}`,
       message: `${titre} — inscris-toi comme joueur :`,
     },
     ...(eventSlug
@@ -40,7 +40,7 @@ export async function PartageTournoi({
           {
             quoi: "Spectateurs",
             aide: "Billet en ligne ou à l'entrée",
-            url: `${base}/rejoindre?vers=/app/events/${eventSlug}`,
+            url: `${base}/e/${eventSlug}`,
             message: `${titre} — prends ta place en salle :`,
           },
         ]
@@ -79,7 +79,7 @@ export async function PartageEvenement({
   slug: string;
   imprimable?: boolean;
 }) {
-  const url = `${await urlPublique()}/rejoindre?vers=/app/events/${slug}`;
+  const url = `${await urlPublique()}/e/${slug}`;
   return (
     <Card shape="panel" className="flex items-center gap-3.5 p-3.5">
       <div className="shrink-0 rounded-card bg-white p-1.5">

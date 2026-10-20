@@ -26,6 +26,14 @@ export const metadata: Metadata = {
   description:
     "Achète tes jetons de billard depuis ton téléphone, scanne ton QR à la table, commande ton matériel et prends tes billets de tournoi. Douala et Yaoundé.",
   applicationName: "Master Break",
+  // Les aperçus de liens (WhatsApp, Facebook) veulent des adresses complètes.
+  metadataBase: new URL(process.env.MB_PUBLIC_URL?.trim() || "https://masterbreak.vps.buyticle.com"),
+  openGraph: {
+    type: "website",
+    siteName: "Master Break",
+    locale: "fr_FR",
+    images: [{ url: "/img/hall-neon.jpg", width: 1200, height: 630, alt: "Master Break" }],
+  },
   manifest: "/manifest.webmanifest",
   // iOS ne lit pas le manifeste pour l'icône de l'écran d'accueil : il lui
   // faut `apple-touch-icon`, et un PNG opaque — il ne sait pas composer sur
