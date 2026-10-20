@@ -223,7 +223,7 @@ export function FormulaireTournoi({
             type="number"
             min={0}
             defaultValue={base0?.prizePool ?? 0}
-            hint="Calculée toute seule quand les cagnottes sont remplies."
+            hint="Au moins la somme des cagnottes : laisse 0 pour la prendre telle quelle, ou annonce plus (lots, trophées)."
           />
           <Field
             label="Partage (texte libre, facultatif)"

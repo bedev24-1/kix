@@ -2406,9 +2406,11 @@ export async function saveTournament(formData: FormData) {
     raceTo: str(formData, "mode") === "seche" ? 1 : Math.max(1, num(formData, "raceTo") || 4),
     minLevel: Math.min(5, Math.max(0, num(formData, "minLevel"))),
     entryFee: Math.max(0, num(formData, "entryFee")),
-    // Des cagnottes remplies : la dotation est leur somme, pas un second
-    // chiffre à tenir d'accord à la main.
-    prizePool: totalCagnottes(cagnottes) || Math.max(0, num(formData, "prizePool")),
+    // La dotation annoncée, jamais moins que la somme des cagnottes. Elle
+    // peut être plus : lots, trophées, primes non encore réparties. Prendre
+    // la somme seule écrasait le chiffre tapé — un tournoi à 1 500 000 F
+    // restait bloqué au total de ses cagnottes.
+    prizePool: Math.max(totalCagnottes(cagnottes), Math.max(0, num(formData, "prizePool"))),
     prizeSplit: str(formData, "prizeSplit"),
     cagnottes,
     presentation: str(formData, "presentation"),
