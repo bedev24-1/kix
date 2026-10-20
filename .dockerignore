@@ -1,0 +1,11 @@
+# Ce qui n'a rien à faire dans le contexte de construction.
+.git
+.github
+node_modules
+.next
+.env*
+!.env.example
+design
+docs
+deploy
+*.log

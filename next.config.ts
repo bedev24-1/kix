@@ -30,6 +30,15 @@ function hoteStockage(): { protocol: "http" | "https"; hostname: string; port?: 
 const hote = hoteStockage();
 
 const nextConfig: NextConfig = {
+  /**
+   * Le dossier `.next/standalone` : l'application et ses seules dépendances
+   * utiles, prêtes à être copiées dans une image sans `node_modules`.
+   *
+   * Il s'ajoute à la sortie habituelle sans la remplacer — `next start`
+   * continue de fonctionner à l'identique.
+   */
+  output: "standalone",
+
   // Le driver libsql embarque des binaires natifs : il reste hors du bundle.
   serverExternalPackages: ["@libsql/client", "libsql"],
 

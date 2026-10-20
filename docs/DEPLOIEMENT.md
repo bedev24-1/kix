@@ -109,6 +109,82 @@ même domaine ne peut pas départager.
 | les paiements | une recharge de jetons : l'écran d'attente doit mener à un vrai USSD |
 | les directs | `/direct` → une vignette, et le lecteur qui démarre |
 
+## 4 bis. « cannot allocate memory » — construire ailleurs
+
+Si le déploiement meurt sur :
+
+```
+Killed
+ERROR: ... cannot allocate memory
+```
+
+ce n'est ni l'environnement ni le code : le noyau du VPS a abattu `next build`.
+La compilation demande **environ 1,4 Gio** (mesuré : 1364 Mio avec Turbopack,
+1281 Mio avec Webpack — l'écart entre les deux moteurs est de 6 %, changer de
+bundler ne sauve rien), et la machine héberge déjà Supabase, MediaMTX et
+l'application.
+
+Deux réponses.
+
+### Le dépannage — du swap, deux minutes
+
+```bash
+free -h && swapon --show            # d'abord, regarder ce qu'on a
+sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+Et, en variable de construction Coolify, `NODE_OPTIONS=--max-old-space-size=2048` :
+sans plafond, Node grandit jusqu'à se faire tuer ; avec, il ramasse ses miettes.
+
+### La vraie réponse — l'image se fabrique sur GitHub
+
+`.github/workflows/image.yml` construit l'image à chaque poussée sur `main` et
+la publie sur `ghcr.io/<proprietaire>/<depot>:main`. Le VPS ne compile plus
+rien : il tire une image prête. Le déploiement tombe de vingt minutes à
+quelques secondes.
+
+**Une fois pour toutes, dans GitHub** → Settings → Secrets and variables →
+Actions → onglet **Variables**, poser les valeurs qui se figent dans le build.
+Ce ne sont pas des secrets : les `NEXT_PUBLIC_*` partent dans le navigateur de
+chaque visiteur, et l'adresse du stockage figure déjà dans chaque image
+téléversée.
+
+```
+SUPABASE_URL
+NEXT_PUBLIC_VAPID_PUBLIC_KEY
+NEXT_PUBLIC_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_APP_ID
+NEXT_PUBLIC_FIREBASE_SENDER_ID
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+NEXT_PUBLIC_FIREBASE_VAPID_KEY
+```
+
+**Rendre le paquet lisible par Coolify** : GitHub → l'onglet Packages du
+profil → le paquet → Package settings → *Change visibility* → **Public**. Pour
+le garder privé, créer plutôt un *Personal Access Token* avec la portée
+`read:packages` et l'enregistrer dans Coolify (Keys & Tokens → Docker
+registries).
+
+**Dans Coolify** : remplacer la ressource « Repository » par une ressource
+**Docker Image**.
+
+| Réglage | Valeur |
+| --- | --- |
+| Image | `ghcr.io/<proprietaire>/<depot>:main` |
+| Port | `3000` |
+| Health check | `/connexion` |
+
+Les variables d'exécution restent exactement les mêmes qu'à la section 2 — le
+conteneur les lit au démarrage. Seules celles du tableau ci-dessus déménagent
+vers GitHub, parce qu'elles sont nécessaires *avant*.
+
+Pour redéployer après coup : relancer le workflow (onglet Actions →
+*Image de production* → Run workflow), puis **Redeploy** dans Coolify, qui
+tirera la nouvelle image.
+
 ## 5. Quand ça casse
 
 - **Les Master Pass ne marchent plus après un déploiement** → `MB_QR_SECRET`
