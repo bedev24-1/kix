@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { db, profilsSpeciaux, users } from "@/db";
+import { db, profilsSpeciaux, users, venues } from "@/db";
 import { notify, uid } from "@/lib/domain";
 import { requireRole, requireUser } from "@/lib/session";
 import { normalizePhone } from "@/lib/phone";
 import { lireType, PROFILS, prolongerProfil, type TypeProfil } from "@/lib/profils";
 import { startPayment } from "@/lib/payments/service";
+import { lireMotif, MOTIFS } from "@/lib/certification";
 import type { PaymentMethod } from "@/lib/payments";
 
 const revalider = () => {
@@ -131,5 +132,72 @@ export async function retirerProfil(id: string) {
   await requireRole("admin");
   await db.update(profilsSpeciaux).set({ status: "retire", updatedAt: new Date() }).where(eq(profilsSpeciaux.id, id));
   revalider();
+  return { ok: true as const };
+}
+
+/* ------------------------------------------------------------ certification */
+
+/** Certifier un compte, avec le motif qui justifie la confiance. */
+export async function certifierCompte(formData: FormData) {
+  await requireRole("admin");
+  const motif = lireMotif(formData.get("motif"));
+  const phone = normalizePhone(String(formData.get("phone") ?? ""));
+  if (!motif) return { ok: false as const, error: "Choisis le motif de la certification." };
+  const compte = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
+  if (!compte) return { ok: false as const, error: "Aucun compte Master Break avec ce numéro." };
+  await db.update(users).set({ certifie: motif, certifieLe: new Date() }).where(eq(users.id, compte.id));
+  await notify(compte.id, "Compte certifié", `${MOTIFS[motif]} : le badge bleu apparaît désormais à côté de ton nom.`, "reward", "/app/rewards");
+  revalidatePath("/", "layout");
+  return { ok: true as const, nom: compte.name };
+}
+
+export async function retirerCertification(userId: string) {
+  await requireRole("admin");
+  await db.update(users).set({ certifie: null, certifieLe: null }).where(eq(users.id, userId));
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+/** Certifier une salle partenaire (ou retirer sa certification). */
+export async function certifierSalle(venueId: string, certifiee: boolean) {
+  await requireRole("admin");
+  await db.update(venues).set({ certifiee }).where(eq(venues.id, venueId));
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+/** Le joueur demande le badge certifié : un motif, une justification. Gratuit, décidé par l'administration. */
+export async function demanderCertification(motif: string, justification: string) {
+  const moi = await requireUser();
+  const m = lireMotif(motif);
+  if (!m) return { ok: false as const, error: "Choisis le motif de ta demande." };
+  if (moi.certifie) return { ok: false as const, error: "Ton compte est déjà certifié." };
+  if (justification.trim().length < 10) return { ok: false as const, error: "Explique en quelques mots pourquoi (salle, titres, diffusion…)." };
+  const actuel = await ligne(moi.id, "certification" as TypeProfil);
+  if (actuel?.status === "demande") return { ok: false as const, error: "Ta demande est déjà en cours d'examen." };
+  const champs = { status: "demande", motif: m, motivation: justification.trim().slice(0, 600), updatedAt: new Date() };
+  if (actuel) await db.update(profilsSpeciaux).set(champs).where(eq(profilsSpeciaux.id, actuel.id));
+  else await db.insert(profilsSpeciaux).values({ id: uid(), userId: moi.id, type: "certification", ...champs });
+  const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+  for (const a of admins) await notify(a.id, "Demande de certification", `${moi.name} · ${MOTIFS[m]}`, "system", "/admin/profils");
+  revalider();
+  return { ok: true as const };
+}
+
+/** L'administration certifie (avec le motif demandé) ou refuse. */
+export async function deciderCertification(id: string, accepte: boolean) {
+  const admin = await requireRole("admin");
+  const p = (await db.select().from(profilsSpeciaux).where(eq(profilsSpeciaux.id, id)).limit(1))[0];
+  if (!p || p.type !== "certification") return { ok: false as const, error: "Demande introuvable." };
+  await db.update(profilsSpeciaux).set({ status: accepte ? "actif" : "refuse", decidePar: admin.id, updatedAt: new Date() }).where(eq(profilsSpeciaux.id, id));
+  if (accepte && p.motif) await db.update(users).set({ certifie: p.motif, certifieLe: new Date() }).where(eq(users.id, p.userId));
+  await notify(
+    p.userId,
+    accepte ? "Compte certifié" : "Certification non accordée",
+    accepte ? "Le badge bleu apparaît désormais à côté de ton nom." : "L'administration n'a pas retenu ta demande pour l'instant.",
+    "reward",
+    "/app/rewards",
+  );
+  revalidatePath("/", "layout");
   return { ok: true as const };
 }

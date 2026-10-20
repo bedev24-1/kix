@@ -32,6 +32,8 @@ export const venues = mb.table("venues", {
   id: id(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  /** Salle partenaire certifiée par l'administration : tournois et paiements officiels. */
+  certifiee: boolean("certifiee").notNull().default(false),
   area: text("area").notNull(),
   city: text("city").notNull(),
   address: text("address").notNull().default(""),
@@ -71,6 +73,12 @@ export const users = mb.table(
     venueId: uuid("venue_id").references(() => venues.id),
     /** homme | femme — nul tant que le joueur ne l'a pas dit. Sert aux tableaux hommes, dames et mixtes. */
     sexe: text("sexe"),
+    /**
+     * La certification, accordée par l'administration seule — jamais achetée :
+     * arbitre_officiel | gerant | coach | pro_verifie | diffuseur. Nulle : non certifié.
+     */
+    certifie: text("certifie"),
+    certifieLe: timestamp("certifie_le", { withTimezone: true }),
     /** Fin de l'abonnement Master Break : donne accès aux directs « membres ». */
     memberUntil: timestamp("member_until", { withTimezone: true }),
     createdAt: createdAt(),
@@ -410,7 +418,7 @@ export const profilsSpeciaux = mb.table(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    // pro | arbitre
+    // pro | arbitre | certification (demande de badge, gratuite)
     type: text("type").notNull(),
     // demande | valide (à payer) | actif | refuse | retire
     status: text("status").notNull().default("demande"),
@@ -418,6 +426,8 @@ export const profilsSpeciaux = mb.table(
     // paiement | admin
     source: text("source").notNull().default("paiement"),
     motivation: text("motivation").notNull().default(""),
+    /** Demande de certification : le motif invoqué (voir lib/certification). */
+    motif: text("motif"),
     decidePar: uuid("decide_par").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

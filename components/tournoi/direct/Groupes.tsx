@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BadgePro, Visage } from "@/components/tournoi/direct/Visage";
 import type { GroupeVue } from "@/lib/tournoi-direct";
 import { cn } from "@/lib/cn";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 
 /**
  * Les poules, comme les groupes de la Ligue des champions : une carte par
@@ -54,6 +55,7 @@ export function Groupes({ poules, finies, qualifies }: { poules: GroupeVue[]; fi
                           <span className="flex min-w-0 flex-col">
                             <span className="flex min-w-0 items-center gap-1">
                               <span className={cn("truncate font-semibold", l.qualifie && "text-ink")}>{l.nom}</span>
+                              <BadgeCertifie motif={l.certifie} taille={12} />
                               {l.pro ? <BadgePro /> : null}
                             </span>
                             {l.forme.length ? (

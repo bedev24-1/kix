@@ -35,7 +35,7 @@ const items: NavItem[] = [
   { href: "/admin/jetons", label: "Jetons", Icon: TicketIcon },
   { href: "/admin/tournois", label: "Tournois", Icon: TrophyIcon },
   { href: "/admin/abonnements", label: "Abonnements", Icon: BoltIcon },
-  { href: "/admin/profils", label: "Profils pro & arbitres", Icon: UserIcon },
+  { href: "/admin/profils", label: "Profils & certification", Icon: UserIcon },
   { href: "/admin/cours", label: "Cours", Icon: TargetIcon },
   { href: "/admin/vendeurs", label: "Vendeurs", Icon: TruckIcon },
   { href: "/admin/retraits", label: "Retraits", Icon: CoinIcon },

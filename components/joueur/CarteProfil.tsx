@@ -4,6 +4,7 @@ import { BoltIcon, ChevronRightIcon, TrophyIcon } from "@/components/icons";
 import { MaPhoto } from "@/components/joueur/MaPhoto";
 import { MonSexe } from "@/components/joueur/MonSexe";
 import { cn } from "@/lib/cn";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 
 /**
  * Le profil en un seul bloc : la photo, le nom et les badges, le code à
@@ -12,6 +13,7 @@ import { cn } from "@/lib/cn";
  */
 export function CarteProfil({
   nom,
+  certifie,
   avatar,
   code,
   sexe,
@@ -23,6 +25,7 @@ export function CarteProfil({
   arbitre,
 }: {
   nom: string;
+  certifie: string | null;
   avatar: string | null;
   code: string;
   sexe: string | null;
@@ -45,7 +48,10 @@ export function CarteProfil({
       <div className="flex items-center gap-3.5 p-4">
         <MaPhoto nom={nom} avatar={avatar} compact />
         <div className="flex min-w-0 grow flex-col gap-1.5">
-          <span className="truncate text-[17px] font-semibold">{nom}</span>
+          <span className="flex min-w-0 items-center gap-1.5 text-[17px] font-semibold">
+            <span className="truncate">{nom}</span>
+            <BadgeCertifie motif={certifie} taille={17} />
+          </span>
           <span className="flex flex-wrap gap-1">
             {badges.map((b) => (
               <span

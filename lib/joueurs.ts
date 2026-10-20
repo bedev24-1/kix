@@ -29,7 +29,7 @@ import { levelFor } from "@/lib/constants";
  */
 
 export type Palmares = {
-  user: Pick<User, "id" | "name" | "avatar" | "points" | "createdAt" | "code">;
+  user: Pick<User, "id" | "name" | "avatar" | "points" | "createdAt" | "code" | "certifie">;
   rang: number;
   matchs: number;
   victoires: number;
@@ -79,6 +79,7 @@ export async function getJoueur(id: string): Promise<Palmares | null> {
       points: compte.points,
       createdAt: compte.createdAt,
       code: compte.code,
+      certifie: compte.certifie,
     },
     rang: devant + 1,
     matchs: joues.length,

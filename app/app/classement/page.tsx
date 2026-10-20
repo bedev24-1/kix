@@ -1,5 +1,6 @@
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { ScreenHeader } from "@/components/mb/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -69,7 +70,10 @@ export default async function ClassementPage() {
                     {joueur.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
-                <span className="max-w-full truncate text-[12.5px] font-semibold">{joueur.name}</span>
+                <span className="flex max-w-full items-center gap-1 text-[12.5px] font-semibold">
+                  <span className="truncate">{joueur.name}</span>
+                  <BadgeCertifie motif={joueur.certifie} taille={12} />
+                </span>
                 <span className="text-[11px] text-muted tabular-nums">{joueur.points} pts</span>
                 <span className={cn("text-[11px]", premier ? "text-gold-text" : "text-faint")}>#{rang}</span>
               </Link>
@@ -143,7 +147,10 @@ export default async function ClassementPage() {
                   {joueur.name.slice(0, 2).toUpperCase()}
                 </span>
               )}
-              <span className="min-w-0 grow truncate text-[13.5px]">{joueur.name}</span>
+              <span className="flex min-w-0 grow items-center gap-1 text-[13.5px]">
+                <span className="truncate">{joueur.name}</span>
+                <BadgeCertifie motif={joueur.certifie} />
+              </span>
               {Number(joueur.titres) > 0 ? (
                 <Chip tone="neutral" className="shrink-0 text-[10.5px]">
                   {Number(joueur.titres)} titre{Number(joueur.titres) > 1 ? "s" : ""}

@@ -1,5 +1,6 @@
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { cn } from "@/lib/cn";
 import { f, km } from "@/lib/format";
 import type { Venue } from "@/db";
@@ -18,7 +19,9 @@ export function VenueCard({ venue, className }: { venue: Venue; className?: stri
         </span>
       </div>
       <div className="flex flex-col gap-1 px-3 py-2.5 lg:px-4 lg:py-3.5">
-        <span className="text-sm font-semibold lg:text-[15px]">{venue.name}</span>
+        <span className="flex items-center gap-1 text-sm font-semibold lg:text-[15px]">
+          {venue.name} {venue.certifiee ? <BadgeCertifie motif="gerant" /> : null}
+        </span>
         <span className="text-[11px] text-muted">
           {km(venue.distanceKm)} · Jeton {f(venue.tokenPrice)}
         </span>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BadgePro, Visage } from "@/components/tournoi/direct/Visage";
 import type { DuelVue } from "@/lib/tournoi-direct";
 import { cn } from "@/lib/cn";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 
 const UNITE = 84; // hauteur réservée à un duel de la colonne la plus fournie
 const CARTE = 66;
@@ -125,6 +126,7 @@ function Ligne({ d, cote, masquer }: { d: DuelVue; cote: "a" | "b"; masquer: boo
     <span className={cn("flex h-6 items-center gap-1.5", perdant && "opacity-35 line-through")}>
       <Visage nom={j.nom} avatar={j.avatar} taille={20} />
       <span className={cn("min-w-0 grow truncate", gagnant ? "font-bold text-ink" : "text-dim")}>{j.nom}</span>
+      <BadgeCertifie motif={j.certifie} taille={12} />
       {j.pro ? <BadgePro /> : null}
       {d.status === "termine" || d.status === "encours" ? (
         <span className={cn("tabular-nums", gagnant ? "font-bold text-gold-text" : "text-muted")}>{score}</span>

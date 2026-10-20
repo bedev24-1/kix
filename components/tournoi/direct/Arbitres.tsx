@@ -1,5 +1,6 @@
 import { Visage } from "@/components/tournoi/direct/Visage";
 import type { ArbitreVue } from "@/lib/tournoi-direct";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 
 /** Les arbitres du tournoi, classés comme une poule : duels tenus, à venir. */
 export function Arbitres({ arbitres }: { arbitres: ArbitreVue[] }) {
@@ -27,6 +28,7 @@ export function Arbitres({ arbitres }: { arbitres: ArbitreVue[] }) {
                 <span className="flex min-w-0 items-center gap-2">
                   <Visage nom={a.nom} avatar={a.avatar} taille={24} />
                   <span className="truncate font-semibold">{a.nom}</span>
+                  <BadgeCertifie motif={a.certifie} taille={12} />
                 </span>
               </td>
               <td className="text-center tabular-nums">{a.termines}</td>

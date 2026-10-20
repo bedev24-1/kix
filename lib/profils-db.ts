@@ -6,7 +6,11 @@ import { enVigueur, type TypeProfil } from "@/lib/profils";
 /** Les profils spéciaux d'un compte, par type. */
 export async function mesProfils(userId: string) {
   const lignes = await db.select().from(profilsSpeciaux).where(eq(profilsSpeciaux.userId, userId));
-  return { pro: lignes.find((l) => l.type === "pro") ?? null, arbitre: lignes.find((l) => l.type === "arbitre") ?? null };
+  return {
+    pro: lignes.find((l) => l.type === "pro") ?? null,
+    arbitre: lignes.find((l) => l.type === "arbitre") ?? null,
+    certification: lignes.find((l) => l.type === "certification") ?? null,
+  };
 }
 
 /** Ce compte a-t-il ce profil en vigueur ? */

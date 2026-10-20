@@ -152,6 +152,7 @@ export async function getClassement(limite = 100) {
       avatar: users.avatar,
       points: users.points,
       memberUntil: users.memberUntil,
+      certifie: users.certifie,
       titres,
       tableaux,
     })

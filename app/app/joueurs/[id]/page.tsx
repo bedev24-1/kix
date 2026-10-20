@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { notFound } from "next/navigation";
 import { Photo } from "@/components/ui/Photo";
 import { BoutonAmi } from "@/components/joueur/BoutonAmi";
@@ -91,7 +92,10 @@ export default async function ProfilJoueur({ params }: { params: Promise<{ id: s
             </span>
           )}
           <div className="flex min-w-0 grow flex-col gap-1">
-            <h1 className="truncate text-[22px] leading-tight">{palmares.user.name}</h1>
+            <h1 className="flex min-w-0 items-center gap-1.5 text-[22px] leading-tight">
+              <span className="truncate">{palmares.user.name}</span>
+              <BadgeCertifie motif={palmares.user.certifie} taille={20} />
+            </h1>
             <p className="text-[12px] text-muted">
               {current.name} · {palmares.user.points} points · joueur depuis {jour(palmares.user.createdAt)}
             </p>

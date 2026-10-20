@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import {
   DecisionCandidat,
   DesignationDuel,
@@ -235,8 +236,9 @@ export async function ConsoleTournoi({
                     {player.seed ? `#${player.seed}` : "—"}
                   </span>
                   <span className="flex min-w-0 grow flex-col gap-0.5">
-                    <span className="truncate text-[13.5px] font-semibold">
-                      {player.nickname || user.name}
+                    <span className="flex min-w-0 items-center gap-1 text-[13.5px] font-semibold">
+                      <span className="truncate">{player.nickname || user.name}</span>
+                      <BadgeCertifie motif={user.certifie} />
                     </span>
                     <span className="truncate text-[11.5px] text-muted">
                       {user.name} · {displayPhone(player.phone || user.phone)} ·{" "}

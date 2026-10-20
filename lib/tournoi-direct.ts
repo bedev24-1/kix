@@ -16,7 +16,7 @@ import { idsPro } from "@/lib/profils-db";
  * recharger, si un score a bougé depuis.
  */
 
-export type Visage = { id: string; userId: string; nom: string; avatar: string | null; seed: number | null; pro?: boolean };
+export type Visage = { id: string; userId: string; nom: string; avatar: string | null; seed: number | null; pro?: boolean; certifie?: string | null };
 
 export type DuelVue = {
   id: string;
@@ -54,7 +54,7 @@ export type LigneGroupe = Visage & {
 
 export type GroupeVue = { numero: number; nom: string; lignes: LigneGroupe[]; duels: DuelVue[]; joues: number; total: number };
 
-export type ArbitreVue = { id: string; nom: string; avatar: string | null; duels: number; termines: number; aVenir: number };
+export type ArbitreVue = { id: string; nom: string; avatar: string | null; certifie?: string | null; duels: number; termines: number; aVenir: number };
 
 export type TableauDirect = {
   poules: GroupeVue[];
@@ -102,6 +102,7 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
         seed: tournamentPlayers.seed,
         nom: users.name,
         avatar: users.avatar,
+        certifie: users.certifie,
       })
       .from(tournamentPlayers)
       .innerJoin(users, eq(users.id, tournamentPlayers.userId))
@@ -113,23 +114,23 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
       .orderBy(asc(tournamentMatches.groupe), asc(tournamentMatches.round), asc(tournamentMatches.slot)),
     t?.eventId
       ? db
-          .select({ id: users.id, nom: users.name, avatar: users.avatar })
+          .select({ id: users.id, nom: users.name, avatar: users.avatar, certifie: users.certifie })
           .from(matchOfficials)
           .innerJoin(users, eq(users.id, matchOfficials.userId))
           .where(eq(matchOfficials.eventId, t.eventId))
-      : Promise.resolve([] as { id: string; nom: string; avatar: string | null }[]),
+      : Promise.resolve([] as { id: string; nom: string; avatar: string | null; certifie: string | null }[]),
   ]);
 
   const pros = await idsPro(joueurs.map((j) => j.userId));
   const visages = new Map<string, Visage>(
-    joueurs.map((j) => [j.id, { id: j.id, userId: j.userId, nom: j.nickname || j.nom, avatar: j.avatar, seed: j.seed, pro: pros.has(j.userId) }]),
+    joueurs.map((j) => [j.id, { id: j.id, userId: j.userId, nom: j.nickname || j.nom, avatar: j.avatar, seed: j.seed, pro: pros.has(j.userId), certifie: j.certifie }]),
   );
 
   // Les arbitres désignés sur un duel sans être dans la liste restent visibles.
   const idsArbitres = [...new Set(duels.map((d) => d.refereeId).filter(Boolean))] as string[];
   const horsListe = idsArbitres.filter((id) => !arbitresInscrits.some((a) => a.id === id));
   const autres = horsListe.length
-    ? await db.select({ id: users.id, nom: users.name, avatar: users.avatar }).from(users).where(inArray(users.id, horsListe))
+    ? await db.select({ id: users.id, nom: users.name, avatar: users.avatar, certifie: users.certifie }).from(users).where(inArray(users.id, horsListe))
     : [];
   const arbitresConnus = new Map([...arbitresInscrits, ...autres].map((a) => [a.id, a]));
 

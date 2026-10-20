@@ -1,9 +1,11 @@
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
+import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { ScreenHeader } from "@/components/mb/AppHeader";
 import { ConvertButton } from "@/components/mb/ConvertButton";
 import { CarteProfil } from "@/components/joueur/CarteProfil";
 import { ProfilsSpeciaux } from "@/components/joueur/ProfilsSpeciaux";
+import { DemandeCertification } from "@/components/joueur/DemandeCertification";
 import { mesProfils } from "@/lib/profils-db";
 import { enVigueur } from "@/lib/profils";
 import { Card } from "@/components/ui/Card";
@@ -51,6 +53,7 @@ export default async function RewardsPage() {
 
       <CarteProfil
         nom={user.name}
+        certifie={user.certifie}
         avatar={user.avatar}
         code={user.code}
         sexe={user.sexe}
@@ -61,6 +64,7 @@ export default async function RewardsPage() {
         pro={enVigueur(profils.pro)}
         arbitre={enVigueur(profils.arbitre)}
       />
+      <DemandeCertification certifie={user.certifie} demande={profils.certification?.status ?? null} />
       <ProfilsSpeciaux
         phone={user.phone}
         etats={{
@@ -183,7 +187,9 @@ export default async function RewardsPage() {
               <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-[11px] font-semibold text-dim">
                 {player.name.slice(0, 2).toUpperCase()}
               </span>
-              <span className="grow text-[13px]">{player.name}</span>
+              <span className="flex grow items-center gap-1 text-[13px]">
+                {player.name} <BadgeCertifie motif={player.certifie} />
+              </span>
               <span className="text-xs text-muted">{group(player.points)} pts</span>
             </div>
           ))}

@@ -255,7 +255,7 @@ export async function getTickets(userId: string) {
 
 export async function getLeaderboard(limit = 5) {
   return db
-    .select({ id: users.id, name: users.name, avatar: users.avatar, points: users.points })
+    .select({ id: users.id, name: users.name, avatar: users.avatar, points: users.points, certifie: users.certifie })
     .from(users)
     .where(eq(users.role, "client"))
     .orderBy(desc(users.points))
