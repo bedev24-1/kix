@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { DecisionCandidat, EtatTournoi, SaisieScore } from "@/components/tournoi/Actions";
+import { DecisionCandidat, EncaisserGuichet, EtatTournoi, SaisieScore } from "@/components/tournoi/Actions";
 import { Bracket, type DuelView } from "@/components/tournoi/Bracket";
 import { Poules } from "@/components/tournoi/Poules";
 import { FormulaireTournoi } from "@/components/tournoi/Organisation";
+import { PartageTournoi } from "@/components/tournoi/Partage";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/icons";
@@ -126,6 +127,8 @@ export async function ConsoleTournoi({
         />
       </header>
 
+      <PartageTournoi titre={tournoi.title} slug={tournoi.slug} eventSlug={jumeau[0]?.slug ?? null} />
+
       <div className="grid grid-cols-3 gap-2.5">
         <Chiffre valeur={String(candidats.length)} quoi="en attente" />
         <Chiffre valeur={`${regles.length}/${retenus.length}`} quoi="retenus réglés" />
@@ -230,8 +233,15 @@ export async function ConsoleTournoi({
                             : "text-[10.5px] text-warn"
                         }
                       >
-                        {player.payment === "paye" ? `${f(player.fee)} réglés` : "droit impayé"}
+                        {player.payment === "paye"
+                          ? `${f(player.fee)} réglés`
+                          : player.payment === "guichet"
+                            ? "paiera au guichet"
+                            : "droit impayé"}
                       </span>
+                    ) : null}
+                    {player.fee > 0 && player.status === "accepte" && player.payment !== "paye" ? (
+                      <EncaisserGuichet playerId={player.id} montant={f(player.fee)} />
                     ) : null}
                   </span>
                 </div>

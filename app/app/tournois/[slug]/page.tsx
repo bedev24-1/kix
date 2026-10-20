@@ -6,6 +6,7 @@ import { db, events, tickets } from "@/db";
 import { Bracket, type DuelView } from "@/components/tournoi/Bracket";
 import { Poules, Programme } from "@/components/tournoi/Poules";
 import { Inscription, type MaCandidature } from "@/components/tournoi/Inscription";
+import { PartageTournoi } from "@/components/tournoi/Partage";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon, PinIcon, TrophyIcon } from "@/components/icons";
@@ -57,7 +58,7 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
             and(
               eq(tickets.eventId, t.eventId),
               eq(tickets.userId, user.id),
-              inArray(tickets.status, ["valid", "used"]),
+              inArray(tickets.status, ["valid", "used", "guichet"]),
             ),
           )
           .limit(1)
@@ -216,6 +217,9 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
             <p className="text-[13.5px] leading-6 whitespace-pre-line text-dim">{t.rules}</p>
           ) : null}
         </Card>
+
+        {/* Chacun peut faire venir ses amis : joueurs et public ont leur QR. */}
+        <PartageTournoi titre={t.title} slug={t.slug} eventSlug={jumeau?.active ? jumeau.slug : null} />
 
         {aVenir.length > 0 || joues.length > 0 ? (
           <section className="flex flex-col gap-3">

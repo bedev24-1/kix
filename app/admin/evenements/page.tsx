@@ -1,6 +1,6 @@
 import { Drawer, Field, PageHead, Pill, Select, SubmitButton, Table, Td, TextArea } from "@/components/admin/AdminUI";
 import { ImageField } from "@/components/admin/ImageField";
-import { cloreEvenement, deleteEvent, saveEvent } from "@/lib/actions";
+import { cloreEvenement, deleteEvent, mettreALaUne, saveEvent } from "@/lib/actions";
 import { etatSoiree, ETATS_SOIREE, soireeTerminee } from "@/lib/soirees";
 import { getAllEvents, getAllVenues } from "@/lib/queries";
 import { f } from "@/lib/format";
@@ -41,7 +41,10 @@ export default async function AdminEvents() {
           <tr key={event.id}>
             <Td>
               <span className="flex flex-col">
-                <span className="font-semibold">{event.title}</span>
+                <span className="font-semibold">
+                  {event.featured ? <span className="mr-1.5 text-gold-text">★</span> : null}
+                  {event.title}
+                </span>
                 <span className="text-[11px] text-muted">{event.subtitle}</span>
               </span>
             </Td>
@@ -87,6 +90,20 @@ export default async function AdminEvents() {
                     <SubmitButton />
                   </form>
                 </details>
+                {/* La une de l'accueil : un seul événement, avec sa propre image. */}
+                <form action={mettreALaUne}>
+                  <input type="hidden" name="id" value={event.id} />
+                  {event.featured ? <input type="hidden" name="retirer" value="on" /> : null}
+                  <button
+                    className={
+                      event.featured
+                        ? "rounded-full border border-gold/50 bg-gold/15 px-3 py-1.5 text-[11px] text-gold-text"
+                        : "rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-ink"
+                    }
+                  >
+                    {event.featured ? "★ À la une" : "Mettre à la une"}
+                  </button>
+                </form>
                 {/* Clore une soirée la laisse à l'affiche, marquée terminée,
                     mais ferme sa billetterie. L'archiver la retire. */}
                 <form action={cloreEvenement}>

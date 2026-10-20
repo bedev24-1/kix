@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { AppHeader } from "@/components/mb/AppHeader";
@@ -74,8 +73,10 @@ export default async function AccueilPage() {
             href={`/app/events/${featured.slug}`}
             className="relative block h-44 overflow-hidden rounded-panel border border-line lg:col-span-2 lg:h-105"
           >
-            <Image
-              src="/img/hero-player.jpg"
+            {/* L'image de l'événement lui-même : l'affiche fixe d'avant faisait
+                croire que chaque soirée avait la même photo. */}
+            <Photo
+              src={featured.image || "/img/hero-player.jpg"}
               alt={featured.title}
               fill
               sizes="(max-width: 1024px) 430px, 800px"

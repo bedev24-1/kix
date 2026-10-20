@@ -47,6 +47,7 @@ import {
 import { COMMISSION_RATE, POINTS_PER_FREE_TOKEN, XP_PER_TOKEN } from "@/lib/constants";
 import { freshCode, freshUserCode, notify, uid } from "@/lib/domain";
 import { INVITE_TTL, looksLikePass, passUrl, signPass, verifyPass } from "@/lib/pass";
+import { SUITE_COOKIE, suiteValide } from "@/lib/suite";
 import { qrShape, type QrShape } from "@/lib/qr";
 import { canScore, getMatch } from "@/lib/live";
 import {
@@ -97,6 +98,12 @@ async function openSession(userId: string, role: string) {
     path: "/",
     maxAge: SESSION_MAX_AGE,
   });
+  // Arrivé par un lien partagé (QR d'un tournoi…) : on le ramène là où il allait.
+  const suite = suiteValide(jar.get(SUITE_COOKIE)?.value);
+  if (suite) {
+    jar.delete(SUITE_COOKIE);
+    redirect(suite);
+  }
   redirect(homeFor(role));
 }
 
@@ -247,7 +254,7 @@ export async function pollPayment(reference: string): Promise<PaymentState | nul
 
 export type ScanResult =
   | { ok: true; kind: "token"; client: string; venue: string; remaining: number; table: number | null }
-  | { ok: true; kind: "ticket"; client: string; event: string }
+  | { ok: true; kind: "ticket"; client: string; event: string; aEncaisser?: number }
   | { ok: false; error: string };
 
 /**
@@ -353,9 +360,35 @@ export async function scanCode(raw: string, method: "qr" | "code" = "code"): Pro
       .from(tickets)
       .innerJoin(events, eq(tickets.eventId, events.id))
       .innerJoin(users, eq(tickets.userId, users.id))
-      .where(and(eq(tickets.code, code), eq(tickets.status, "valid")))
+      .where(and(eq(tickets.code, code), inArray(tickets.status, ["valid", "guichet"])))
       .limit(1)
   )[0];
+
+  // Un billet réservé « à payer au guichet » : on l'encaisse à l'entrée. Le
+  // contrôleur voit le montant à demander, le billet passe utilisé, et la
+  // référence « guichet: » le sort de la recette en ligne — cet argent-là est
+  // déjà dans la caisse de la salle.
+  if (ticket && ticket.ticket.status === "guichet") {
+    await db
+      .update(tickets)
+      .set({ status: "used", usedAt: new Date(), reference: `guichet:${ticket.ticket.id}` })
+      .where(eq(tickets.id, ticket.ticket.id));
+    await db.insert(scans).values({
+      id: uid(),
+      kind: "ticket",
+      refId: ticket.ticket.id,
+      code,
+      userId: ticket.user.id,
+      venueId: manager.venueId ?? ticket.event.venueId,
+      managerId: manager.id,
+      method,
+      amount: ticket.event.price,
+    });
+    revalidatePath("/gerant");
+    revalidatePath("/gerant/evenements");
+    revalidatePath("/admin");
+    return { ok: true, kind: "ticket", client: ticket.user.name, event: ticket.event.title, aEncaisser: ticket.event.price };
+  }
 
   if (ticket) {
     // Ce que le billet a rapporté, figé au scan : sans lui, la recette du jour
@@ -513,12 +546,16 @@ export async function checkout(
 /* ------------------------------------------------------------------ billets */
 
 export type TicketResult =
-  | { ok: true; free: true; code: string }
+  | { ok: true; free: true; code: string; guichet?: boolean }
   | { ok: true; free: false; reference: string; instruction?: string; amount: number }
   | { ok: false; error: string };
 
 /** Billet gratuit : émis tout de suite. Billet payant : émis à la confirmation. */
-export async function buyTicket(eventId: string, phone?: string, method: "om" | "momo" = "momo"): Promise<TicketResult> {
+export async function buyTicket(
+  eventId: string,
+  phone?: string,
+  method: "om" | "momo" | "guichet" = "momo",
+): Promise<TicketResult> {
   const user = await requireUser();
   const event = (await db.select().from(events).where(eq(events.id, eventId)).limit(1))[0];
   if (!event) return { ok: false, error: "Événement introuvable" };
@@ -542,6 +579,35 @@ export async function buyTicket(eventId: string, phone?: string, method: "om" | 
     revalidatePath(`/app/events/${event.slug}`);
     revalidatePath("/app/billets");
     return { ok: true, free: true, code };
+  }
+
+  // Payer à l'entrée : la place est gardée, le billet porte son code, et le
+  // contrôleur encaisse en le scannant. Un seul billet en attente par personne
+  // et par soirée : sinon on bloquerait la salle à coups de réservations.
+  if (method === "guichet") {
+    const deja = (
+      await db
+        .select({ code: tickets.code })
+        .from(tickets)
+        .where(and(eq(tickets.eventId, eventId), eq(tickets.userId, user.id), eq(tickets.status, "guichet")))
+        .limit(1)
+    )[0];
+    if (deja) return { ok: true, free: true, code: deja.code, guichet: true };
+    await db.insert(tickets).values({ id: ticketId, eventId, userId: user.id, code, status: "guichet" });
+    await db
+      .update(events)
+      .set({ attendees: sql`${events.attendees} + 1` })
+      .where(eq(events.id, eventId));
+    await notify(
+      user.id,
+      `Place réservée · ${event.title}`,
+      `${event.day} · à régler à l'entrée (${event.price.toLocaleString("fr-FR")} F) · code ${code}`,
+      "event",
+      "/app/billets",
+    );
+    revalidatePath(`/app/events/${event.slug}`);
+    revalidatePath("/app/billets");
+    return { ok: true, free: true, code, guichet: true };
   }
 
   if (!phone) return { ok: false, error: "Numéro Mobile Money requis" };
@@ -976,6 +1042,23 @@ export async function deletePack(formData: FormData) {
   await requireRole("admin");
   await db.update(packs).set({ active: false }).where(eq(packs.id, str(formData, "id")));
   revalidatePath("/admin/packs");
+}
+
+/**
+ * Mettre un événement à la une : c'est lui, et son image, qui ouvrent l'accueil
+ * du site et de l'application. Un seul à la fois — le choisir retire l'ancien.
+ * Réservé à l'administration : la une est celle de tout Master Break.
+ */
+export async function mettreALaUne(formData: FormData) {
+  await requireRole("admin");
+  const id = str(formData, "id");
+  const retirer = str(formData, "retirer") === "on";
+  await db.update(events).set({ featured: false }).where(eq(events.featured, true));
+  if (id && !retirer) await db.update(events).set({ featured: true }).where(eq(events.id, id));
+  revalidatePath("/");
+  revalidatePath("/app");
+  revalidatePath("/app/events");
+  revalidatePath("/admin/evenements");
 }
 
 export async function saveEvent(formData: FormData) {
@@ -2644,6 +2727,71 @@ export async function payerInscription(
     .where(eq(tournamentPlayers.id, ligne.id));
   revalidatePath(`/app/tournois/${t.slug}`);
   return { ok: true, reference: started.reference, instruction: started.instruction, amount: ligne.fee };
+}
+
+/**
+ * Le joueur retenu choisit de régler son droit au guichet, en espèces, le
+ * jour du tournoi. L'organisateur le voit « à encaisser » dans sa console.
+ */
+export async function payerAuGuichet(tournamentId: string) {
+  const user = await requireUser();
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return { ok: false as const, error: "Tournoi introuvable." };
+  const ligne = (
+    await db
+      .select()
+      .from(tournamentPlayers)
+      .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.userId, user.id)))
+      .limit(1)
+  )[0];
+  if (!ligne || ligne.status !== "accepte") return { ok: false as const, error: "Ta candidature n'est pas encore retenue." };
+  if (ligne.payment === "paye") return { ok: false as const, error: "Ton inscription est déjà réglée." };
+  if (ligne.fee <= 0) return { ok: false as const, error: "Ce tournoi est gratuit pour les joueurs." };
+
+  await db.update(tournamentPlayers).set({ payment: "guichet" }).where(eq(tournamentPlayers.id, ligne.id));
+  if (t.organiserId) {
+    await notify(
+      t.organiserId,
+      `Au guichet · ${t.title}`,
+      `${ligne.nickname} réglera ${ligne.fee.toLocaleString("fr-FR")} F sur place.`,
+      "event",
+      "/gerant/tournois",
+    );
+  }
+  revalidatePath(`/app/tournois/${t.slug}`);
+  revalidatePath("/gerant/tournois");
+  revalidatePath("/admin/tournois");
+  return { ok: true as const };
+}
+
+/**
+ * L'organisateur a reçu le droit en espèces. La référence « guichet: » garde
+ * cette somme hors de la recette en ligne : elle est déjà dans sa caisse.
+ */
+export async function encaisserAuGuichet(playerId: string) {
+  const auteur = await requireRole("admin", "manager");
+  const ligne = (await db.select().from(tournamentPlayers).where(eq(tournamentPlayers.id, playerId)).limit(1))[0];
+  if (!ligne) return { ok: false as const, error: "Joueur introuvable." };
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, ligne.tournamentId)).limit(1))[0];
+  if (!t) return { ok: false as const, error: "Tournoi introuvable." };
+  if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
+  if (ligne.payment === "paye") return { ok: false as const, error: "Déjà réglé." };
+
+  await db
+    .update(tournamentPlayers)
+    .set({ payment: "paye", reference: `guichet:${ligne.id}` })
+    .where(eq(tournamentPlayers.id, ligne.id));
+  await notify(
+    ligne.userId,
+    `Inscription réglée · ${t.title}`,
+    `${ligne.fee.toLocaleString("fr-FR")} F reçus au guichet. Ta place au tableau est confirmée.`,
+    "event",
+    `/app/tournois/${t.slug}`,
+  );
+  revalidatePath(`/app/tournois/${t.slug}`);
+  revalidatePath("/gerant/tournois");
+  revalidatePath("/admin/tournois");
+  return { ok: true as const };
 }
 
 /** Le tirage : les candidatures deviennent un tableau. */

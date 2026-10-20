@@ -53,8 +53,8 @@ export default async function BilletsPage() {
                   {event.day} · {event.hours}
                 </span>
               </span>
-              <Chip tone={ticket.status === "valid" ? "gold" : "neutral"}>
-                {ticket.status === "valid" ? "Valide" : "Utilisé"}
+              <Chip tone={ticket.status === "valid" || ticket.status === "guichet" ? "gold" : "neutral"}>
+                {ticket.status === "valid" ? "Valide" : ticket.status === "guichet" ? "À régler à l'entrée" : "Utilisé"}
               </Chip>
             </div>
           </div>
@@ -74,6 +74,11 @@ export default async function BilletsPage() {
               <span className="text-[11px] text-muted">
                 {event.address} · billet {f(event.price)}
               </span>
+              {ticket.status === "guichet" ? (
+                <span className="text-[11px] text-gold-text">
+                  Présente ce code à l&apos;entrée et règle {f(event.price)} en espèces.
+                </span>
+              ) : null}
             </div>
           </div>
         </Card>

@@ -23,7 +23,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   const [venues, tickets] = await Promise.all([getVenues(), getTickets(user.id)]);
   const venue = venues.find((v) => v.id === event.venueId);
-  const owned = tickets.some((t) => t.event.id === event.id && t.ticket.status === "valid");
+  const owned = tickets.some((t) => t.event.id === event.id && (t.ticket.status === "valid" || t.ticket.status === "guichet"));
   const terminee = soireeTerminee(event.endedAt);
   const avatars = ["/img/p-ariel.jpg", "/img/p-yannick.jpg", "/img/p-champion.jpg"];
 

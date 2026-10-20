@@ -7,6 +7,7 @@ import { useSnackbar } from "@/components/ui/Snackbar";
 import { CheckIcon, TrophyIcon } from "@/components/icons";
 import {
   deciderCandidat,
+  encaisserAuGuichet,
   lancerTableau,
   noterDuel,
   ouvrirLeTableauFinal,
@@ -157,6 +158,16 @@ export function DecisionCandidat({ playerId, status }: { playerId: string; statu
         Écarter
       </Bouton>
     </div>
+  );
+}
+
+/** Le droit d'inscription reçu en espèces, au guichet. */
+export function EncaisserGuichet({ playerId, montant }: { playerId: string; montant: string }) {
+  const { faire, pending } = useGeste();
+  return (
+    <Bouton accent pending={pending} petit onClick={() => faire(() => encaisserAuGuichet(playerId), "Encaissé", montant)}>
+      Encaissé · {montant}
+    </Bouton>
   );
 }
 

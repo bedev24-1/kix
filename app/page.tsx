@@ -34,6 +34,9 @@ const coaches = [
 export default async function LandingPage() {
   const [venues, events, user] = await Promise.all([getVenues(), getEvents(), getCurrentUser()]);
   const featured = events[0];
+  // La une, choisie dans l'administration : son image habille la section des
+  // tables, et son titre mène à sa page.
+  const une = events.find((e) => e.featured && !e.endedAt) ?? null;
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -232,9 +235,9 @@ export default async function LandingPage() {
 
       {/* --------------------------------------------------------------- tables */}
       <section className="relative isolate min-h-[620px] overflow-hidden px-5 py-10 lg:px-10">
-        <Image
-          src="/img/hall-neon.jpg"
-          alt="Salle de billard la nuit"
+        <Photo
+          src={une?.image || "/img/hall-neon.jpg"}
+          alt={une ? une.title : "Salle de billard la nuit"}
           fill
           sizes="100vw"
           className="-z-10 object-cover"
@@ -248,9 +251,18 @@ export default async function LandingPage() {
               <span className="h-1.5 w-1.5 rounded-full bg-gold" />
             </span>
             <span className="text-[11px] tracking-[0.22em] text-white/70 uppercase">Table black</span>
-            <span className="text-[11px] tracking-[0.22em] text-white/70 uppercase">
-              {featured ? `${featured.title} · ${featured.day}` : "Tournoi du samedi"}
-            </span>
+            {une ? (
+              <Link
+                href={`/app/events/${une.slug}`}
+                className="rounded-full bg-gold px-4 py-2.5 text-[11px] font-semibold tracking-[0.16em] text-gold-ink uppercase"
+              >
+                À la une · {une.title} · {une.day}
+              </Link>
+            ) : (
+              <span className="text-[11px] tracking-[0.22em] text-white/70 uppercase">
+                {featured ? `${featured.title} · ${featured.day}` : "Tournoi du samedi"}
+              </span>
+            )}
           </div>
 
           <div className="stagger flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">

@@ -112,7 +112,8 @@ export async function getEvents(): Promise<EventRow[]> {
     .select()
     .from(events)
     .where(eq(events.active, true))
-    .orderBy(sql`${events.endedAt} is not null`, events.createdAt);
+    // L'événement « à la une » d'abord, tant qu'il n'est pas terminé.
+    .orderBy(sql`${events.endedAt} is not null`, desc(events.featured), events.createdAt);
 }
 
 export async function getEvent(slug: string) {

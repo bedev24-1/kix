@@ -52,6 +52,23 @@ export function TicketButton({
     return { ok: true as const, reference: result.reference, instruction: result.instruction };
   };
 
+  /** Payer à l'entrée : la place est gardée, le code part dans « Mes billets ». */
+  function auGuichet() {
+    startTransition(async () => {
+      const result = await buyTicket(eventId, undefined, "guichet");
+      if (!result.ok) {
+        notify("Réservation impossible", { detail: result.error, tone: "warn" });
+        return;
+      }
+      setOpen(false);
+      setTaken(true);
+      if (result.free) {
+        notify("Place réservée", { detail: `À régler à l'entrée · code ${result.code}`, tone: "jade" });
+      }
+      router.push("/app/billets");
+    });
+  }
+
   function onPaid() {
     setOpen(false);
     setTaken(true);
@@ -94,6 +111,14 @@ export function TicketButton({
           hint="Billet joueur · place gardée jusqu'au check-in"
           label={`Payer mon billet · ${fcfa(price)}`}
         />
+        <button
+          onClick={auGuichet}
+          disabled={pending}
+          className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-line text-[13px] font-semibold text-ink"
+        >
+          {pending ? <Spinner size={15} /> : null}
+          Réserver et payer à l&apos;entrée
+        </button>
       </Sheet>
     </>
   );

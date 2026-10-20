@@ -45,10 +45,12 @@ export async function getRecetteSalle(venueId: string): Promise<Recette> {
                                     where s.venue_id = ${venueId} and s.kind = 'token')`),
         billets: somme(sql<number>`(select coalesce(sum(e.price), 0)
                                       from mb.tickets t join mb.events e on e.id = t.event_id
-                                     where e.venue_id = ${venueId} and t.status in ('valid','used'))`),
+                                     where e.venue_id = ${venueId} and t.status in ('valid','used')
+                                       and coalesce(t.reference, '') not like 'guichet:%')`),
         tournois: somme(sql<number>`(select coalesce(sum(p.fee), 0)
                                        from mb.tournament_players p join mb.tournaments tr on tr.id = p.tournament_id
-                                      where tr.venue_id = ${venueId} and p.payment = 'paye')`),
+                                      where tr.venue_id = ${venueId} and p.payment = 'paye'
+                                        and coalesce(p.reference, '') not like 'guichet:%')`),
         reservations: somme(sql<number>`(select coalesce(sum(r.deposit), 0) from mb.reservations r
                                           where r.venue_id = ${venueId} and r.status in ('confirmed','seated','done'))`),
         verse: somme(sql<number>`(select coalesce(sum(o.amount), 0) from mb.payouts o

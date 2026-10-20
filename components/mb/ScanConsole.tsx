@@ -54,6 +54,12 @@ export function ScanConsole({ samplePass }: { samplePass?: string }) {
           seq: ++seq.current,
         });
         notify("Jeton débité", { detail: result.client });
+      } else if (result.aEncaisser) {
+        // Billet réservé « au guichet » : l'entrée est validée, il reste à
+        // prendre l'argent. On le dit en grand, c'est la seule chose à faire.
+        const montant = `${result.aEncaisser.toLocaleString("fr-FR")} F`;
+        setFeedback({ ok: true, title: `Encaisser ${montant}`, detail: `${result.client} · ${result.event} · payé au guichet`, seq: ++seq.current });
+        notify(`Encaisser ${montant}`, { detail: result.client, tone: "jade" });
       } else {
         setFeedback({ ok: true, title: "Pass validé", detail: `${result.client} · ${result.event}`, seq: ++seq.current });
         notify("Pass validé", { detail: result.event, tone: "jade" });

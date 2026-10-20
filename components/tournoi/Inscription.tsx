@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Sheet } from "@/components/ui/Sheet";
 import { useSnackbar } from "@/components/ui/Snackbar";
 import { CheckIcon, TargetIcon, TicketIcon } from "@/components/icons";
-import { payerInscription, postuler, retirerCandidature, type CandidatureState } from "@/lib/actions";
+import { payerAuGuichet, payerInscription, postuler, retirerCandidature, type CandidatureState } from "@/lib/actions";
 import { NIVEAUX } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
 import { fcfa } from "@/lib/format";
@@ -186,6 +186,28 @@ function Joueur({
           </button>
         ) : null}
 
+        {/* Pas de Mobile Money sous la main : on réglera sur place, en espèces.
+            L'organisateur encaisse et confirme la place avant le tirage. */}
+        {doitPayer && encours.payment !== "guichet" ? (
+          <button
+            onClick={() =>
+              retirer(async () => {
+                const res = await payerAuGuichet(tournamentId);
+                if (!res.ok) notify("Impossible", { detail: res.error, tone: "warn" });
+                else {
+                  notify("C'est noté", { detail: "Règle ton inscription au guichet avant le tirage.", tone: "jade" });
+                  router.refresh();
+                }
+              })
+            }
+            disabled={retrait}
+            className="press flex h-10 items-center justify-center gap-2 rounded-full border border-line text-[12.5px] font-semibold text-ink"
+          >
+            {retrait ? <Spinner size={14} /> : null}
+            Je paierai au guichet
+          </button>
+        ) : null}
+
         {ouvert && encours.status !== "refuse" ? (
           <button
             onClick={() =>
@@ -340,7 +362,9 @@ function Etat({ candidature }: { candidature: NonNullable<MaCandidature> }) {
           ? candidature.seed
             ? `Au tableau · tête de série n°${candidature.seed}`
             : "Retenu · inscription réglée"
-          : "Retenu · droit d'inscription à régler";
+          : candidature.payment === "guichet"
+            ? "Retenu · à régler au guichet avant le tirage"
+            : "Retenu · droit d'inscription à régler";
 
   return (
     <div className="flex items-center gap-2.5 rounded-panel border border-line bg-surface px-3.5 py-3">

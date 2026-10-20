@@ -369,7 +369,7 @@ export const tournamentPlayers = mb.table(
     status: text("status").notNull().default("candidat"),
     /** Le droit d'inscription, figé à la candidature. */
     fee: integer("fee").notNull().default(0),
-    // impaye | paye
+    // impaye | guichet (réglera sur place) | paye
     payment: text("payment").notNull().default("impaye"),
     reference: text("reference").unique(),
     /** Le tour atteint, pour les points de classement. */
@@ -498,6 +498,8 @@ export const events = mb.table("events", {
   description: text("description").notNull().default(""),
   tags: text("tags").notNull().default(""),
   active: boolean("active").notNull().default(true),
+  /** À la une : l'événement mis en avant sur l'accueil du site et de l'application. Un seul à la fois. */
+  featured: boolean("featured").notNull().default(false),
   /**
    * Quand la soirée s'est terminée.
    *
@@ -522,7 +524,7 @@ export const tickets = mb.table(
       .notNull()
       .references(() => users.id),
     code: text("code").notNull(),
-    // pending | valid | used | failed
+    // pending | valid | used | failed | guichet (place gardée, à régler à l'entrée)
     status: text("status").notNull().default("valid"),
     /** Référence du paiement (mb.payments.reference) — nulle pour un billet gratuit. */
     reference: text("reference").unique(),
