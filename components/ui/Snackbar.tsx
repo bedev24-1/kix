@@ -35,7 +35,7 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-[430px] flex-col gap-2 px-5 pb-40 sm:inset-x-auto sm:right-6 sm:mx-0 sm:max-w-[420px] sm:pb-6"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-[430px] flex-col gap-2 px-5 pb-[calc(10rem+env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-6 sm:mx-0 sm:max-w-[420px] sm:pb-6"
       >
         {snacks.map((snack) => (
           <div

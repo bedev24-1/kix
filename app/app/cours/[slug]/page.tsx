@@ -98,7 +98,7 @@ export default async function CoursFiche({ params }: { params: Promise<{ slug: s
 
       {/* Barre d'inscription collée en bas sur téléphone : la décision se prend
           après avoir lu, pas avant de faire défiler. */}
-      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-[430px] px-5 pb-24 lg:static lg:mx-0 lg:max-w-none lg:px-0 lg:pb-0 lg:pt-5">
+      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-[430px] px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:static lg:mx-0 lg:max-w-none lg:px-0 lg:pb-0 lg:pt-5">
         <Card shape="panel" className="glass-strong p-3.5 lg:max-w-md">
           <CoursButton
             courseId={course.id}

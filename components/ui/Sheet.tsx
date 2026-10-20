@@ -47,7 +47,7 @@ export function Sheet({
   if (!open || !surLeClient) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end pt-[env(safe-area-inset-top)] justify-center sm:items-center">
       <button
         aria-label="Fermer"
         onClick={onClose}
@@ -58,7 +58,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "sheet-in relative max-h-[90dvh] w-full overflow-y-auto rounded-t-panel border border-line bg-bg-2 px-5 pt-5 pb-7",
+          "sheet-in relative max-h-[90dvh] w-full overflow-y-auto rounded-t-panel border border-line bg-bg-2 px-5 pt-5 pb-[calc(1.75rem+env(safe-area-inset-bottom))]",
           "sm:max-w-[26rem] sm:rounded-panel sm:px-6 sm:pb-6",
           className,
         )}

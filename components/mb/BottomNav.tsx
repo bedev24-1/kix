@@ -32,7 +32,7 @@ export function BottomNav() {
   const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
 
   return (
-    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] px-5 pb-4 md:max-w-[34rem] lg:hidden">
+    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:max-w-[34rem] lg:hidden">
       <div className="glass-strong relative flex h-17 items-center justify-between rounded-full px-6">
         {left.map((item) => (
           <NavItem key={item.href} {...item} active={isActive(item.href)} />

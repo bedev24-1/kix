@@ -107,7 +107,7 @@ export function DashNav({
           ref={feuille}
           role="dialog"
           aria-label="Plus de pages"
-          className="rise glass-strong fixed inset-x-3 bottom-22 z-50 flex flex-col gap-1 rounded-panel p-2 lg:hidden"
+          className="rise glass-strong fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex flex-col gap-1 rounded-panel p-2 lg:hidden"
         >
           {caches.map(({ href, label, Icon }) => (
             <Link
@@ -125,7 +125,7 @@ export function DashNav({
         </div>
       ) : null}
 
-      <nav className="glass-strong fixed inset-x-3 bottom-3 z-50 flex items-center gap-1 rounded-full p-1.5 lg:hidden">
+      <nav className="glass-strong fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 flex items-center gap-1 rounded-full p-1.5 lg:hidden">
         {visibles.map(({ href, label, Icon, primary }) => {
           const ici = actif(href);
           return (

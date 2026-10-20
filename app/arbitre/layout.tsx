@@ -15,7 +15,7 @@ export default async function ArbitreLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-bg/90 px-5 py-3.5 backdrop-blur-xl">
+      <header className="sticky top-[env(safe-area-inset-top)] z-30 flex items-center justify-between gap-3 border-b border-line bg-bg/90 px-5 py-3.5 backdrop-blur-xl">
         <Link href="/arbitre" className="flex items-center gap-2.5">
           <MasterMark size={28} />
           <span className="flex flex-col gap-px">

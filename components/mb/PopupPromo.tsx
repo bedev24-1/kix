@@ -107,7 +107,7 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
     <button
       onClick={fermer}
       aria-label="Fermer"
-      className="absolute top-3.5 right-3.5 z-10 grid h-[38px] w-[38px] place-items-center rounded-full border border-white/45 bg-black/35 text-[20px] leading-none text-white backdrop-blur"
+      className="absolute top-[calc(0.875rem+var(--haut,0px))] right-3.5 z-10 grid h-[38px] w-[38px] place-items-center rounded-full border border-white/45 bg-black/35 text-[20px] leading-none text-white backdrop-blur"
     >
       ×
     </button>
@@ -120,7 +120,7 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
         // Néon : une carte cadrée d'or, le grand chiffre en contour lumineux.
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute inset-x-[18px] inset-y-[26px] mx-auto max-w-md overflow-hidden rounded-[28px] border-[1.5px] border-[#e8c86a]/90 bg-[#071a13] text-white shadow-[0_0_0_4px_rgba(232,200,106,.12),0_0_40px_rgba(232,200,106,.35),0_30px_80px_rgba(0,0,0,.7)]"
+          className="absolute inset-x-[18px] top-[calc(26px+env(safe-area-inset-top))] bottom-[calc(26px+env(safe-area-inset-bottom))] mx-auto max-w-md overflow-hidden rounded-[28px] border-[1.5px] border-[#e8c86a]/90 bg-[#071a13] text-white shadow-[0_0_0_4px_rgba(232,200,106,.12),0_0_40px_rgba(232,200,106,.35),0_30px_80px_rgba(0,0,0,.7)]"
         >
           {fond}
           <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/20 to-black/90" />
@@ -140,11 +140,11 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
         </div>
       ) : (
         // Cinéma : bord à bord, le titre géant au centre bas.
-        <div onClick={(e) => e.stopPropagation()} className="absolute inset-0 mx-auto max-w-xl overflow-hidden bg-[#071a13] text-white sm:inset-y-6 sm:rounded-[28px]">
+        <div onClick={(e) => e.stopPropagation()} className="absolute inset-0 mx-auto max-w-xl overflow-hidden bg-[#071a13] text-white [--haut:env(safe-area-inset-top)] sm:inset-y-6 sm:[--haut:0px] sm:rounded-[28px]">
           {fond}
           <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_35%,rgba(0,0,0,0)_0%,rgba(0,0,0,.55)_60%,rgba(0,0,0,.92)_100%)]" />
           {croix}
-          <div className="absolute inset-0 flex flex-col items-center justify-end gap-3.5 px-7 pb-11 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-end gap-3.5 px-7 pb-[calc(2.75rem+env(safe-area-inset-bottom))] text-center">
             {etiquette}
             {popup.surtitre ? (
               <span className="text-[12px] font-semibold tracking-[0.3em] text-[#e8c86a] uppercase">{popup.surtitre}</span>

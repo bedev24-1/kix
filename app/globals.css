@@ -95,6 +95,25 @@
     color: var(--mb-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* Installée sur l'écran d'accueil d'un iPhone, l'app s'étend sous la
+       barre d'état et l'encoche (viewport-fit=cover, barre translucide).
+       On rend ces zones au système : sans quoi le haut de chaque page
+       passait sous l'heure et l'îlot noir. */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* La barre d'état reste translucide : un bandeau du fond de l'app la
+     masque, pour que le contenu qui défile ne passe pas sous l'heure. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: env(safe-area-inset-top);
+    background: var(--mb-bg);
+    z-index: 70;
+    pointer-events: none;
   }
 
   h1,

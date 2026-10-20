@@ -162,7 +162,7 @@ export function FicheArticle({
             emporte l'accès au panier. Deux barres flottantes à la même hauteur,
             c'est la seconde qui recouvre la première : on ne pouvait plus
             ajouter un deuxième article sans passer par le panier. */}
-        <div className="fixed inset-x-0 bottom-24 z-20 mx-auto w-full max-w-[430px] px-5 lg:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 mx-auto w-full max-w-[430px] px-5 lg:hidden">
           <div className="glass-strong flex items-center gap-2 rounded-full p-1.5">
             <AddToCartButton
               slug={produit.slug}

@@ -145,7 +145,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       </aside>
       </div>
 
-      <div className="fixed inset-x-0 bottom-24 z-20 mx-auto w-full max-w-[430px] px-5 lg:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 mx-auto w-full max-w-[430px] px-5 lg:hidden">
         <div className="glass-strong rounded-full px-4 py-3">
           <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} libelle={tournoi ? "Billet spectateur" : "Billet d'entrée"} />
         </div>
