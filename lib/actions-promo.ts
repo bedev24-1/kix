@@ -75,7 +75,7 @@ async function maitreDe(eventId: string) {
 }
 
 /** Le gérant demande une promotion : l'administration valide le contenu avant tout paiement. */
-export async function demanderPromotion(eventId: string, formule: string, debutSouhaite: string) {
+export async function demanderPromotion(eventId: string, formule: string, debutSouhaite: string, image = "", accroche = "") {
   const m = await maitreDe(eventId);
   if (!m) return { ok: false as const, error: "Cet événement n'est pas le tien." };
   const tarif = (await db.select().from(tarifsPromo).where(eq(tarifsPromo.formule, formule)).limit(1))[0];
@@ -90,6 +90,9 @@ export async function demanderPromotion(eventId: string, formule: string, debutS
     jours: tarif.jours,
     status: "demande",
     debutSouhaite: souhait && !Number.isNaN(souhait.getTime()) ? souhait : null,
+    // Une adresse du site ou une image en ligne, rien d'autre.
+    image: /^(\/|https:\/\/)\S+$/.test(image.trim()) ? image.trim().slice(0, 500) : "",
+    accroche: accroche.trim().slice(0, 14),
   });
   const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
   for (const a of admins) await notify(a.id, `Promotion demandée · ${m.e.title}`, `${tarif.nom} · ${tarif.prix.toLocaleString("fr-FR")} F`, "system", "/admin/promotions");

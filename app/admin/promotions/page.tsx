@@ -3,7 +3,8 @@ import { db, events, promotions, tarifsPromo, users, venues } from "@/db";
 import { PageHead, Pill, SubmitButton, Table, Td } from "@/components/admin/AdminUI";
 import { DecisionsPromo } from "@/components/admin/PromotionsAdmin";
 import { modifierTarif } from "@/lib/actions-promo";
-import { CAPACITE } from "@/lib/promotions";
+import { CAPACITE, contenuPopup } from "@/lib/promotions";
+import { Photo } from "@/components/ui/Photo";
 import { requireRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,12 @@ export default async function AdminPromotions() {
   const [tarifs, lignes] = await Promise.all([
     db.select().from(tarifsPromo).orderBy(asc(tarifsPromo.prix)),
     db
-      .select({ promo: promotions, event: { id: events.id, title: events.title, slug: events.slug }, venue: venues.name, gerant: users.name })
+      .select({
+        promo: promotions,
+        event: { id: events.id, title: events.title, slug: events.slug, subtitle: events.subtitle, day: events.day, hours: events.hours, price: events.price, image: events.image },
+        venue: venues.name,
+        gerant: users.name,
+      })
       .from(promotions)
       .innerJoin(events, eq(events.id, promotions.eventId))
       .leftJoin(venues, eq(venues.id, events.venueId))
@@ -64,25 +70,39 @@ export default async function AdminPromotions() {
 
       <h2 className="text-[15px] font-semibold">Demandes à valider · {demandes.length}</h2>
       {demandes.length ? (
-        <Table head={["Événement", "Formule", "Prix", "À partir du", "Gérant", ""]}>
-          {demandes.map(({ promo, event, venue, gerant }) => (
-            <tr key={promo.id}>
-              <Td>
-                <a href={`/e/${event.slug}`} target="_blank" className="font-semibold underline">
-                  {event.title}
-                </a>
-                <span className="block text-[11px] text-muted">{venue ?? ""}</span>
-              </Td>
-              <Td>{nom(promo.formule)}</Td>
-              <Td>{promo.prix.toLocaleString("fr-FR")} F</Td>
-              <Td className="text-muted">{jour(promo.debutSouhaite)}</Td>
-              <Td className="text-muted">{gerant ?? "—"}</Td>
-              <Td>
-                <DecisionsPromo id={promo.id} avecPopup={promo.formule === "popup" || promo.formule === "pack"} />
-              </Td>
-            </tr>
-          ))}
-        </Table>
+        <div className="flex flex-col gap-3">
+          {demandes.map(({ promo, event, venue, gerant }) => {
+            const avecPopup = promo.formule === "popup" || promo.formule === "pack";
+            const affiche = promo.image || event.image;
+            return (
+              <article key={promo.id} className="flex flex-col gap-3 border border-line p-4">
+                <div className="flex flex-wrap items-start gap-3.5">
+                  {affiche ? (
+                    <span className="relative h-24 w-[72px] shrink-0 overflow-hidden border border-line">
+                      <Photo src={affiche} alt="" fill sizes="72px" className="object-cover" />
+                    </span>
+                  ) : null}
+                  <div className="flex min-w-0 grow flex-col gap-1 text-[13px]">
+                    <a href={`/e/${event.slug}`} target="_blank" className="text-[15px] font-semibold underline">
+                      {event.title}
+                    </a>
+                    <span className="text-muted">
+                      {venue ?? ""} · demandé par {gerant ?? "—"}
+                    </span>
+                    <span>
+                      <strong>{nom(promo.formule)}</strong> · {promo.prix.toLocaleString("fr-FR")} F · à partir du {jour(promo.debutSouhaite)}
+                    </span>
+                    <span className="text-[12px] text-muted">
+                      {promo.image ? "Affiche fournie par le gérant" : "Pas d'affiche : l'image de l'événement sera utilisée"}
+                      {promo.accroche ? ` · grand texte « ${promo.accroche} »` : ""}
+                    </span>
+                  </div>
+                </div>
+                <DecisionsPromo id={promo.id} apercu={avecPopup ? contenuPopup(promo, event) : null} />
+              </article>
+            );
+          })}
+        </div>
       ) : (
         <p className="text-[13px] text-muted">Aucune demande en attente.</p>
       )}

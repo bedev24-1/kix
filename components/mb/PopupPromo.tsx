@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Photo } from "@/components/ui/Photo";
 import { cn } from "@/lib/cn";
 
-type Popup = {
+export type Popup = {
   id: string;
   titre: string;
   modele: string;
@@ -68,10 +68,38 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
   }, [page]);
 
   if (!popup) return null;
-  const fermer = () => {
-    stat(popup.id, "fermeture");
-    setPopup(null);
-  };
+  return (
+    <VuePopup
+      popup={popup}
+      onFermer={() => {
+        stat(popup.id, "fermeture");
+        setPopup(null);
+      }}
+      onClic={() => {
+        stat(popup.id, "clic");
+        setPopup(null);
+      }}
+    />
+  );
+}
+
+/**
+ * Le rendu seul, sans file ni plafond. En `apercu`, il se loge dans son
+ * conteneur au lieu de couvrir l'écran : l'administration voit le pop-up tel
+ * que le joueur le verra avant de valider son modèle.
+ */
+export function VuePopup({
+  popup,
+  onFermer,
+  onClic,
+  apercu = false,
+}: {
+  popup: Pick<Popup, "titre" | "modele" | "etiquette" | "surtitre" | "accroche" | "texte" | "image" | "bouton1Label" | "bouton1Url" | "bouton2Label" | "bouton2Url">;
+  onFermer?: () => void;
+  onClic?: () => void;
+  apercu?: boolean;
+}) {
+  const fermer = () => onFermer?.();
   const boutons = [
     { label: popup.bouton1Label, url: popup.bouton1Url, principal: true },
     { label: popup.bouton2Label, url: popup.bouton2Url, principal: false },
@@ -84,9 +112,9 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
     <Link
       key={b.label}
       href={b.url}
-      onClick={() => {
-        stat(popup.id, "clic");
-        setPopup(null);
+      onClick={(e) => {
+        if (apercu) return e.preventDefault();
+        onClic?.();
       }}
       className={cn(
         "press flex h-[50px] items-center justify-center rounded-full border-[1.5px] bg-transparent px-4 text-[14.5px] font-semibold transition hover:bg-white/10",
@@ -112,10 +140,16 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
       ×
     </button>
   );
-  const fond = popup.image ? <Photo src={popup.image} alt="" fill sizes="(max-width: 640px) 100vw, 480px" className="object-cover" priority /> : null;
+  const fond = popup.image ? <Photo src={popup.image} alt="" fill sizes="(max-width: 640px) 100vw, 480px" className="object-cover" priority={!apercu} /> : null;
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm" onClick={fermer} role="dialog" aria-modal="true" aria-label={popup.titre}>
+    <div
+      className={apercu ? "absolute inset-0 overflow-hidden bg-black/70" : "fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm"}
+      onClick={fermer}
+      role={apercu ? undefined : "dialog"}
+      aria-modal={apercu ? undefined : true}
+      aria-label={popup.titre}
+    >
       {neon ? (
         // Néon : une carte cadrée d'or, le grand chiffre en contour lumineux.
         <div
@@ -140,7 +174,7 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
         </div>
       ) : (
         // Cinéma : bord à bord, le titre géant au centre bas.
-        <div onClick={(e) => e.stopPropagation()} className="absolute inset-0 mx-auto max-w-xl overflow-hidden bg-[#071a13] text-white [--haut:env(safe-area-inset-top)] sm:inset-y-6 sm:[--haut:0px] sm:rounded-[28px]">
+        <div onClick={(e) => e.stopPropagation()} className={cn("absolute inset-0 mx-auto max-w-xl overflow-hidden bg-[#071a13] text-white", !apercu && "[--haut:env(safe-area-inset-top)] sm:inset-y-6 sm:rounded-[28px] sm:[--haut:0px]")}>
           {fond}
           <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_35%,rgba(0,0,0,0)_0%,rgba(0,0,0,.55)_60%,rgba(0,0,0,.92)_100%)]" />
           {croix}

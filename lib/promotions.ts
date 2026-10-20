@@ -65,17 +65,7 @@ export async function programmer(exec: Executor, promoId: string, source: "paiem
       popupId = uid();
       await exec.insert(popups).values({
         id: popupId,
-        titre: e.title,
-        texte: e.subtitle,
-        modele: p.modelePopup,
-        etiquette: "Sponsorisé",
-        surtitre: [e.day, e.hours].filter(Boolean).join(" · "),
-        accroche: e.price > 0 ? `${e.price.toLocaleString("fr-FR")} F` : "Entrée libre",
-        image: e.image,
-        bouton1Label: e.price > 0 ? "Prendre ma place" : "Réserver ma place",
-        bouton1Url: `/e/${e.slug}`,
-        bouton2Label: "Voir l'événement",
-        bouton2Url: `/app/events/${e.slug}`,
+        ...contenuPopup(p, e),
         pages: "tous",
         parJour: 1,
         debut: dateDebut,
@@ -172,4 +162,28 @@ export async function tourDeGarde() {
     await db.update(promotions).set({ rappelEnvoye: true }).where(eq(promotions.id, promo.id));
     await prevenir(promo, true);
   }
+}
+
+/**
+ * Le pop-up d'une promotion, tel que les joueurs le verront : l'affiche du
+ * gérant (ou l'image de l'événement), son grand texte (ou le prix). Sert à la
+ * programmation comme à l'aperçu que l'administration valide.
+ */
+export function contenuPopup(
+  p: Pick<typeof promotions.$inferSelect, "modelePopup" | "image" | "accroche">,
+  e: Pick<typeof events.$inferSelect, "title" | "subtitle" | "day" | "hours" | "price" | "image" | "slug">,
+) {
+  return {
+    titre: e.title,
+    texte: e.subtitle,
+    modele: p.modelePopup,
+    etiquette: "Sponsorisé",
+    surtitre: [e.day, e.hours].filter(Boolean).join(" · "),
+    accroche: p.accroche || (e.price > 0 ? `${e.price.toLocaleString("fr-FR")} F` : "Entrée libre"),
+    image: p.image || e.image,
+    bouton1Label: e.price > 0 ? "Prendre ma place" : "Réserver ma place",
+    bouton1Url: `/e/${e.slug}`,
+    bouton2Label: "Voir l'événement",
+    bouton2Url: `/app/events/${e.slug}`,
+  };
 }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { MomoCheckout, type Method } from "@/components/mb/MomoCheckout";
+import { ImageField } from "@/components/admin/ImageField";
 import { Card } from "@/components/ui/Card";
 import { Sheet } from "@/components/ui/Sheet";
 import { useSnackbar } from "@/components/ui/Snackbar";
@@ -33,7 +34,7 @@ const ETATS: Record<string, string> = {
  * validation de l'administration, puis payer. La promotion entre alors dans
  * la file de la vitrine, au premier créneau libre.
  */
-export function Promouvoir({ eventId, tarifs, promos, phone }: { eventId: string; tarifs: TarifVue[]; promos: PromoVue[]; phone: string }) {
+export function Promouvoir({ eventId, image, tarifs, promos, phone }: { eventId: string; image: string; tarifs: TarifVue[]; promos: PromoVue[]; phone: string }) {
   const router = useRouter();
   const { notify } = useSnackbar();
   const [choix, setChoix] = useState(tarifs[0]?.formule ?? "");
@@ -43,7 +44,7 @@ export function Promouvoir({ eventId, tarifs, promos, phone }: { eventId: string
   const jour = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "");
 
   return (
-    <Card shape="panel" className="flex flex-col gap-3.5 p-4">
+    <Card id="promouvoir" shape="panel" className="flex scroll-mt-6 flex-col gap-3.5 p-4">
       <div className="flex flex-col gap-0.5">
         <h2 className="text-[15px] font-semibold">Promouvoir cet événement</h2>
         <p className="text-[12px] text-muted">L&apos;administration valide le visuel, tu paies, et la promotion passe au premier créneau libre.</p>
@@ -53,6 +54,7 @@ export function Promouvoir({ eventId, tarifs, promos, phone }: { eventId: string
         {tarifs.map((t) => (
           <button
             key={t.formule}
+            type="button"
             onClick={() => setChoix(t.formule)}
             className={cn(
               "press flex flex-col items-start gap-1 rounded-panel border p-3 text-left transition",
@@ -70,26 +72,36 @@ export function Promouvoir({ eventId, tarifs, promos, phone }: { eventId: string
         ))}
       </div>
 
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          const d = new FormData(ev.currentTarget);
+          start(async () => {
+            const res = await demanderPromotion(eventId, choix, date, String(d.get("image") ?? ""), String(d.get("accroche") ?? ""));
+            if (!res.ok) return notify("Impossible", { detail: res.error, tone: "warn" });
+            notify("Demande envoyée", { detail: "L'administration va la valider.", tone: "jade" });
+            router.refresh();
+          });
+        }}
+      >
+      {/* L'affiche sert au pop-up et à la vitrine : sans elle, on prend l'image de l'événement. */}
+      <ImageField name="image" dossier="promotions" label="Affiche de la promotion (portrait de préférence)" defaultValue={image} />
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] tracking-[0.08em] text-muted uppercase">Grand texte du pop-up (facultatif)</span>
+        <input name="accroche" maxLength={14} placeholder="-20 %, 3 000 F, GRATUIT…" className="h-11 rounded-full border border-line bg-surface px-4 text-[13px] text-ink" />
+        <span className="text-[11px] text-muted">Vide : le prix de la place s&apos;affiche. L&apos;administration choisit le modèle (Cinéma ou Néon) en validant.</span>
+      </label>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-[11px] tracking-[0.08em] text-muted uppercase">À partir du</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-full border border-line bg-surface px-4 text-[13px] text-ink" />
         </label>
-        <button
-          disabled={pending || !choix}
-          onClick={() =>
-            start(async () => {
-              const res = await demanderPromotion(eventId, choix, date);
-              if (!res.ok) return notify("Impossible", { detail: res.error, tone: "warn" });
-              notify("Demande envoyée", { detail: "L'administration va la valider.", tone: "jade" });
-              router.refresh();
-            })
-          }
-          className="press h-11 rounded-full bg-gold px-5 text-[13px] font-semibold text-gold-ink disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending || !choix} className="press h-11 rounded-full bg-gold px-5 text-[13px] font-semibold text-gold-ink disabled:opacity-50">
           Demander la promotion
         </button>
       </div>
+      </form>
 
       {promos.length ? (
         <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">

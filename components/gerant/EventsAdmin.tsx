@@ -130,6 +130,7 @@ export function EventsAdmin({ rows }: { rows: EventRowView[] }) {
                 </span>
                 <span>{row.entres} entrés</span>
                 {row.attente > 0 ? <span className="text-warn">{row.attente} en attente</span> : null}
+                {!soireeTerminee(row.endedAt) ? <span className="ml-auto font-semibold text-gold-text">Promouvoir →</span> : null}
               </div>
             </Card>
           </Link>

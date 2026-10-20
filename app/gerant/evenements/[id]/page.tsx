@@ -58,6 +58,7 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
 
       <Promouvoir
         eventId={event.id}
+        image={event.image}
         phone={manager.phone}
         tarifs={tarifs.map((t) => ({ formule: t.formule, nom: t.nom, prix: t.prix, jours: t.jours }))}
         promos={promos.map((p) => ({

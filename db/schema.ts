@@ -515,6 +515,10 @@ export const promotions = mb.table(
     popupId: uuid("popup_id").references(() => popups.id, { onDelete: "set null" }),
     /** Le modèle de pop-up choisi par l'administration en validant. */
     modelePopup: text("modele_popup").notNull().default("cinema"),
+    /** L'affiche fournie par le gérant ; à défaut, l'image de l'événement. */
+    image: text("image").notNull().default(""),
+    /** Le grand texte du pop-up (« -20 % », « 3 000 F ») ; à défaut, le prix. */
+    accroche: text("accroche").notNull().default(""),
     notifEnvoyee: boolean("notif_envoyee").notNull().default(false),
     rappelEnvoye: boolean("rappel_envoye").notNull().default(false),
     motifRefus: text("motif_refus").notNull().default(""),

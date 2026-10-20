@@ -148,6 +148,20 @@ export async function ConsoleTournoi({
 
       <PartageTournoi titre={tournoi.title} slug={tournoi.slug} eventSlug={jumeau[0]?.slug ?? null} imprimable />
 
+      {/* La promotion passe par l'événement jumeau : c'est lui que le public achète. */}
+      {retour.startsWith("/gerant") && jumeau[0] ? (
+        <Link
+          href={`/gerant/evenements/${jumeau[0].id}#promouvoir`}
+          className="press flex items-center justify-between gap-3 rounded-panel border border-gold/40 bg-gold/8 px-4 py-3.5"
+        >
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[14px] font-semibold">Promouvoir ce tournoi</span>
+            <span className="text-[12px] text-muted">Pop-up, à la une, sponsorisé, notification : avec ton affiche.</span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold text-gold-text">Choisir →</span>
+        </Link>
+      ) : null}
+
       <div className="grid grid-cols-3 gap-2.5">
         <Chiffre valeur={String(candidats.length)} quoi="en attente" />
         <Chiffre valeur={`${regles.length}/${retenus.length}`} quoi="retenus réglés" />
