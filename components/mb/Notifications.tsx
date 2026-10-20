@@ -27,6 +27,25 @@ const useMonte = () =>
 
 type Etat = "inconnu" | "impossible" | "ios" | "refusee" | "prete" | "active";
 
+/** Ce navigateur a choisi de ne plus être prévenu : on ne le réinscrit pas en douce. */
+const CLE_COUPEE = "mb_notifs_coupees";
+const CLE_ENDPOINT = "mb_notifs_endpoint";
+const lireLocal = (cle: string) => {
+  try {
+    return localStorage.getItem(cle);
+  } catch {
+    return null;
+  }
+};
+const ecrireLocal = (cle: string, valeur: string | null) => {
+  try {
+    if (valeur === null) localStorage.removeItem(cle);
+    else localStorage.setItem(cle, valeur);
+  } catch {
+    /* navigation privée : sans mémoire, rien de grave */
+  }
+};
+
 /** Enregistrer ce navigateur auprès du serveur. Idempotent : on peut répéter. */
 async function inscrire(cleVapid: string, firebase?: ConfigFirebase | null, cleWebPushFirebase?: string) {
   const sw = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
@@ -64,6 +83,34 @@ async function inscrire(cleVapid: string, firebase?: ConfigFirebase | null, cleW
     body: JSON.stringify(corps),
   });
   if (!res.ok) throw new Error("refus du serveur");
+  // On garde l'adresse d'envoi : c'est elle qu'il faudra retirer pour couper.
+  if (typeof corps.endpoint === "string") ecrireLocal(CLE_ENDPOINT, corps.endpoint);
+}
+
+/**
+ * Couper les notifications sur ce navigateur.
+ *
+ * Le navigateur ne laisse pas une page retirer sa propre permission : on fait
+ * ce qui revient au même. Le serveur oublie l'adresse d'envoi, le navigateur
+ * se désabonne, et l'on retient le choix pour ne pas le réinscrire au
+ * prochain passage.
+ */
+async function desinscrire() {
+  const sw = await navigator.serviceWorker.getRegistration("/");
+  const abonnement = await sw?.pushManager.getSubscription();
+  const endpoint = lireLocal(CLE_ENDPOINT) || abonnement?.endpoint || null;
+  if (endpoint) {
+    await fetch("/api/push/subscribe", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ endpoint }),
+    }).catch(() => {});
+  }
+  // Les deux, s'ils existent : l'abonnement standard et le jeton Firebase
+  // reposent sur le même abonnement du service worker.
+  await abonnement?.unsubscribe().catch(() => false);
+  ecrireLocal(CLE_ENDPOINT, null);
+  ecrireLocal(CLE_COUPEE, "1");
 }
 
 function b64ToU8(base64: string) {
@@ -86,7 +133,7 @@ function lire(): Etat {
     return surIos && !installe ? "ios" : "impossible";
   }
   if (Notification.permission === "denied") return "refusee";
-  if (Notification.permission === "granted") return "active";
+  if (Notification.permission === "granted") return lireLocal(CLE_COUPEE) ? "prete" : "active";
   return "prete";
 }
 
@@ -122,6 +169,7 @@ export function ActiverNotifications({
   useEffect(() => {
     if (!monte || verifie.current) return;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    if (lireLocal(CLE_COUPEE)) return; // coupées par la personne : on respecte
     verifie.current = true;
 
     void (async () => {
@@ -154,6 +202,19 @@ export function ActiverNotifications({
     }
   }
 
+  async function couper() {
+    setTravail(true);
+    try {
+      await desinscrire();
+      setEtat("prete");
+      notify("Notifications coupées", { detail: "Tu peux les réactiver quand tu veux, ici même." });
+    } catch {
+      notify("Impossible de couper", { detail: "Réessaie dans un instant.", tone: "warn" });
+    } finally {
+      setTravail(false);
+    }
+  }
+
   async function activer() {
     setTravail(true);
     try {
@@ -165,6 +226,7 @@ export function ActiverNotifications({
       }
 
       await inscrire(cleVapid, firebase, cleWebPushFirebase);
+      ecrireLocal(CLE_COUPEE, null);
 
       setEtat("active");
       notify("Notifications activées", { detail: "On te préviendra même application fermée.", tone: "jade" });
@@ -233,6 +295,13 @@ export function ActiverNotifications({
         >
           {travail ? <Spinner size={13} /> : null}
           Tester
+        </button>
+        <button
+          onClick={couper}
+          disabled={travail}
+          className="press flex h-10 shrink-0 items-center rounded-full border border-line px-3.5 text-[12px] text-muted transition hover:text-warn disabled:opacity-50"
+        >
+          Couper
         </button>
       </Card>
     );

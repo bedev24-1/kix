@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, pushSubscriptions } from "@/db";
 import { getCurrentUser } from "@/lib/session";
 import { uid } from "@/lib/domain";
@@ -63,7 +63,10 @@ export async function DELETE(request: Request) {
 
   const corps = (await request.json().catch(() => null)) as { endpoint?: string } | null;
   if (corps?.endpoint) {
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, corps.endpoint));
+    // Seulement les siens : une adresse d'envoi n'est pas un secret.
+    await db
+      .delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.endpoint, corps.endpoint), eq(pushSubscriptions.userId, user.id)));
   }
   return Response.json({ ok: true });
 }
