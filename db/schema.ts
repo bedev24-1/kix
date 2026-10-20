@@ -410,6 +410,10 @@ export const tournamentMatches = mb.table(
     raceTo: integer("race_to").notNull().default(4),
     /** Le match arbitré correspondant, quand il est lancé sur une table. */
     matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+    /** L'arbitre annoncé pour ce duel : il peut en saisir le score. */
+    refereeId: uuid("referee_id").references(() => users.id, { onDelete: "set null" }),
+    /** La table où il se joue, telle qu'on l'annonce : « 3 », « Table VIP ». */
+    tableLabel: text("table_label").notNull().default(""),
     // attente | encours | termine | exempt
     status: text("status").notNull().default("attente"),
     createdAt: createdAt(),

@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { DecisionCandidat, EncaisserGuichet, EtatTournoi, SaisieScore } from "@/components/tournoi/Actions";
-import { Bracket, type DuelView } from "@/components/tournoi/Bracket";
-import { Poules } from "@/components/tournoi/Poules";
+import {
+  DecisionCandidat,
+  DesignationDuel,
+  EncaisserGuichet,
+  EtatTournoi,
+  GestionArbitres,
+  Placement,
+  SaisieScore,
+} from "@/components/tournoi/Actions";
+import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { FormulaireTournoi } from "@/components/tournoi/Organisation";
 import { PartageTournoi } from "@/components/tournoi/Partage";
 import { Card } from "@/components/ui/Card";
@@ -11,18 +18,17 @@ import { nomDuTour } from "@/lib/bracket";
 import {
   duree,
   getBracket,
-  getClassementDesPoules,
   getDuelsDePoule,
   getPlayers,
   nomsDuTableau,
   poulesTerminees,
   tourEnCours,
 } from "@/lib/tournaments";
-import { vuesDesDuelsDePoule, vuesDesPoules } from "@/lib/tournoi-vues";
+import { nomDeLaPoule } from "@/lib/poules";
 import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
 import { f } from "@/lib/format";
-import { db, events } from "@/db";
+import { db, events, matchOfficials, users } from "@/db";
 import { eq } from "drizzle-orm";
 import type { Tournament, Venue } from "@/db";
 
@@ -47,16 +53,22 @@ export async function ConsoleTournoi({
   salles?: { value: string; label: string }[];
 }) {
   const enPoules = tournoi.format === "poules";
-  const [joueurs, duels, poules, classements, finies, noms, jumeau] = await Promise.all([
+  const [joueurs, duels, poules, finies, noms, jumeau, arbitres] = await Promise.all([
     getPlayers(tournoi.id),
     getBracket(tournoi.id),
     enPoules ? getDuelsDePoule(tournoi.id) : Promise.resolve([]),
-    enPoules ? getClassementDesPoules(tournoi.id) : Promise.resolve([]),
     enPoules ? poulesTerminees(tournoi.id) : Promise.resolve(false),
     nomsDuTableau(tournoi.id),
     tournoi.eventId
       ? db.select().from(events).where(eq(events.id, tournoi.eventId)).limit(1)
       : Promise.resolve([]),
+    tournoi.eventId
+      ? db
+          .select({ id: users.id, nom: users.name })
+          .from(matchOfficials)
+          .innerJoin(users, eq(users.id, matchOfficials.userId))
+          .where(eq(matchOfficials.eventId, tournoi.eventId))
+      : Promise.resolve([] as { id: string; nom: string }[]),
   ]);
 
   const candidats = joueurs.filter((j) => j.player.status === "candidat");
@@ -77,20 +89,18 @@ export async function ConsoleTournoi({
     (a, b) => Number(a.status === "termine") - Number(b.status === "termine"),
   );
 
-  const vues: DuelView[] = duels.map((d) => ({
-    id: d.id,
-    round: d.round,
-    slot: d.slot,
-    aId: d.playerAId,
-    bId: d.playerBId,
-    a: d.playerAId ? noms.get(d.playerAId) : undefined,
-    b: d.playerBId ? noms.get(d.playerBId) : undefined,
-    scoreA: d.scoreA,
-    scoreB: d.scoreB,
-    winnerId: d.winnerId,
-    raceTo: d.raceTo,
-    status: d.status,
-  }));
+  // Où se trouve chaque joueur, pour le placement à la main : sa poule tant
+  // que le tableau n'est pas ouvert, sa case sur l'arbre ensuite.
+  const placeDe = (id: string, groupe: number | null, seed: number | null) => {
+    if (duels.length) {
+      const d = duels.find((x) => x.status !== "termine" && (x.playerAId === id || x.playerBId === id));
+      return d ? `${nomDuTour(d.round, tours)} · duel ${d.slot + 1}` : "Éliminé ou exempté";
+    }
+    return groupe ? `Poule ${nomDeLaPoule(groupe)}` : seed ? `#${seed}` : "—";
+  };
+  const placables = retenus
+    .filter((j) => j.player.seed !== null)
+    .map((j) => ({ id: j.player.id, nom: j.player.nickname || j.user.name, place: placeDe(j.player.id, j.player.groupe, j.player.seed) }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -154,40 +164,46 @@ export async function ConsoleTournoi({
           </h2>
           <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:gap-3">
             {aJouer.map((d) => (
-              <SaisieScore
-                key={d.id}
-                duelId={d.id}
-                raceTo={d.raceTo}
-                nomA={noms.get(d.playerAId!)?.nom ?? "Joueur A"}
-                nomB={noms.get(d.playerBId!)?.nom ?? "Joueur B"}
-                scoreA={d.scoreA}
-                scoreB={d.scoreB}
-                termine={d.status === "termine"}
-              />
+              <div key={d.id} className="flex flex-col gap-1.5">
+                <SaisieScore
+                  duelId={d.id}
+                  raceTo={d.raceTo}
+                  nomA={noms.get(d.playerAId!)?.nom ?? "Joueur A"}
+                  nomB={noms.get(d.playerBId!)?.nom ?? "Joueur B"}
+                  scoreA={d.scoreA}
+                  scoreB={d.scoreB}
+                  termine={d.status === "termine"}
+                />
+                {d.status !== "termine" ? (
+                  <DesignationDuel duelId={d.id} arbitres={arbitres} arbitreId={d.refereeId} table={d.tableLabel} />
+                ) : null}
+              </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      {classements.length > 0 ? (
+      <section className="flex flex-col gap-3">
+        <h2 className="text-[15px] font-semibold">Arbitres du tournoi</h2>
+        <p className="text-[12px] text-muted">
+          Annoncés ici, ils se désignent ensuite duel par duel, avec la table. L&apos;arbitre d&apos;un duel en saisit
+          le score depuis la page du tournoi.
+        </p>
+        <GestionArbitres tournamentId={tournoi.id} arbitres={arbitres} />
+      </section>
+
+      {tournoi.status === "encours" && placables.length > 1 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-[15px] font-semibold">Les poules</h2>
-          <Poules
-            classements={vuesDesPoules(classements, noms, tournoi.qualifiers)}
-            duels={vuesDesDuelsDePoule(poules, noms)}
-            qualifiesParPoule={tournoi.qualifiers}
-          />
+          <h2 className="text-[15px] font-semibold">Placer les joueurs</h2>
+          <p className="text-[12px] text-muted">
+            Deux joueurs échangent leur place — {duels.length ? "leur case sur l'arbre" : "leur poule"} et leurs duels
+            — tant qu&apos;aucun des deux n&apos;a joué.
+          </p>
+          <Placement tournamentId={tournoi.id} joueurs={placables} />
         </section>
       ) : null}
 
-      {vues.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-[15px] font-semibold">
-            {enPoules ? "Le tableau final" : "Le tableau"}
-          </h2>
-          <Bracket duels={vues} tours={tours} />
-        </section>
-      ) : null}
+      <TableauEnDirect t={tournoi} base={retour} lien={(o) => `${retour}/${o.id}`} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[15px] font-semibold">

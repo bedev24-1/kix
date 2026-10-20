@@ -6,9 +6,13 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useSnackbar } from "@/components/ui/Snackbar";
 import { CheckIcon, TrophyIcon } from "@/components/icons";
 import {
+  ajouterArbitreTournoi,
   deciderCandidat,
+  designerDuel,
+  echangerPlaces,
   encaisserAuGuichet,
   lancerTableau,
+  retirerArbitreTournoi,
   noterDuel,
   ouvrirLeTableauFinal,
   setTournamentStatus,
@@ -90,21 +94,38 @@ export function EtatTournoi({
         </Bouton>
       ) : null}
 
+      {/* Deux tirages : par classement (têtes de série, favoris éloignés) ou
+          au sort. Les places se corrigent ensuite à la main, joueur contre
+          joueur, tant que personne n'a joué. */}
       {(status === "inscriptions" || status === "complet") && acceptes >= minimum ? (
-        <Bouton
-          accent
-          pending={pending}
-          onClick={() =>
-            faire(
-              () => lancerTableau(id),
-              enPoules ? "Poules tirées" : "Tableau tiré",
-              "Les joueurs sont prévenus de leur place.",
-            )
-          }
-        >
-          <TrophyIcon size={15} />
-          {enPoules ? "Tirer les poules" : "Tirer le tableau"}
-        </Bouton>
+        <>
+          <Bouton
+            accent
+            pending={pending}
+            onClick={() =>
+              faire(
+                () => lancerTableau(id, "hasard"),
+                enPoules ? "Poules tirées au sort" : "Tableau tiré au sort",
+                "Les joueurs sont prévenus de leur place.",
+              )
+            }
+          >
+            <TrophyIcon size={15} />
+            {enPoules ? "Poules au sort" : "Tableau au sort"}
+          </Bouton>
+          <Bouton
+            pending={pending}
+            onClick={() =>
+              faire(
+                () => lancerTableau(id, "classement"),
+                enPoules ? "Poules tirées" : "Tableau tiré",
+                "Têtes de série selon le classement. Les joueurs sont prévenus.",
+              )
+            }
+          >
+            Par classement
+          </Bouton>
+        </>
       ) : null}
 
       {/* Les poules jouées, le tableau final s'ouvre entre les qualifiés. */}
@@ -307,5 +328,146 @@ function Bouton({
       {pending ? <Spinner size={13} /> : null}
       {children}
     </button>
+  );
+}
+
+/** Placer à la main : deux joueurs, et ils échangent leur place (poule ou case de l'arbre). */
+export function Placement({
+  tournamentId,
+  joueurs,
+}: {
+  tournamentId: string;
+  joueurs: { id: string; nom: string; place: string }[];
+}) {
+  const { faire, pending } = useGeste();
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const options = [...joueurs].sort((x, y) => x.place.localeCompare(y.place, "fr", { numeric: true }) || x.nom.localeCompare(y.nom));
+  const choix = (valeur: string, poser: (v: string) => void, libelle: string) => (
+    <label className="flex min-w-0 grow flex-col gap-1">
+      <span className="text-[10.5px] tracking-[0.1em] text-muted uppercase">{libelle}</span>
+      <select
+        value={valeur}
+        onChange={(e) => poser(e.target.value)}
+        className="h-11 min-w-0 rounded-none border border-line bg-surface px-2 text-[13px] text-ink"
+      >
+        <option value="">Choisir…</option>
+        {options.map((j) => (
+          <option key={j.id} value={j.id}>
+            {j.place} · {j.nom}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
+      {choix(a, setA, "Joueur")}
+      {choix(b, setB, "Échange avec")}
+      <Bouton
+        accent
+        pending={pending}
+        onClick={() =>
+          faire(() => echangerPlaces(tournamentId, a, b), "Places échangées", "Les duels suivent les joueurs.")
+        }
+      >
+        Échanger
+      </Bouton>
+    </div>
+  );
+}
+
+/** La liste des arbitres du tournoi : on en ajoute par numéro, on en retire. */
+export function GestionArbitres({
+  tournamentId,
+  arbitres,
+}: {
+  tournamentId: string;
+  arbitres: { id: string; nom: string }[];
+}) {
+  const { faire, pending } = useGeste();
+  const [tel, setTel] = useState("");
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex gap-2">
+        <input
+          value={tel}
+          onChange={(e) => setTel(e.target.value)}
+          inputMode="tel"
+          placeholder="Numéro de l'arbitre (compte Master Break)"
+          className="h-11 min-w-0 grow rounded-none border border-line bg-surface px-3 text-[13px] text-ink"
+        />
+        <Bouton
+          accent
+          pending={pending}
+          onClick={() => faire(() => ajouterArbitreTournoi(tournamentId, tel), "Arbitre annoncé", "Il est prévenu.")}
+        >
+          Ajouter
+        </Bouton>
+      </div>
+      {arbitres.length ? (
+        <div className="flex flex-wrap gap-1.5">
+          {arbitres.map((a) => (
+            <span key={a.id} className="flex items-center gap-1.5 rounded-full border border-line py-1 pr-1 pl-3 text-[12px]">
+              {a.nom}
+              <button
+                aria-label={`Retirer ${a.nom}`}
+                onClick={() => faire(() => retirerArbitreTournoi(tournamentId, a.id), "Arbitre retiré")}
+                className="grid h-6 w-6 place-items-center rounded-full text-muted hover:text-warn"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[12px] text-muted">Aucun arbitre annoncé pour l&apos;instant.</p>
+      )}
+    </div>
+  );
+}
+
+/** L'arbitre et la table d'un duel. */
+export function DesignationDuel({
+  duelId,
+  arbitres,
+  arbitreId,
+  table,
+}: {
+  duelId: string;
+  arbitres: { id: string; nom: string }[];
+  arbitreId: string | null;
+  table: string;
+}) {
+  const { faire, pending } = useGeste();
+  const [qui, setQui] = useState(arbitreId ?? "");
+  const [ou, setOu] = useState(table);
+  const change = qui !== (arbitreId ?? "") || ou !== table;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <select
+        value={qui}
+        onChange={(e) => setQui(e.target.value)}
+        className="h-9 min-w-0 grow rounded-none border border-line bg-surface px-2 text-[12px] text-ink"
+      >
+        <option value="">Sans arbitre</option>
+        {arbitres.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.nom}
+          </option>
+        ))}
+      </select>
+      <input
+        value={ou}
+        onChange={(e) => setOu(e.target.value)}
+        placeholder="Table"
+        className="h-9 w-20 rounded-none border border-line bg-surface px-2 text-[12px] text-ink"
+      />
+      {change ? (
+        <Bouton pending={pending} onClick={() => faire(() => designerDuel(duelId, qui || null, ou), "Duel mis à jour")}>
+          OK
+        </Bouton>
+      ) : null}
+    </div>
   );
 }

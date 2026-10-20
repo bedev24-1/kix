@@ -2838,15 +2838,16 @@ export async function encaisserAuGuichet(playerId: string) {
 }
 
 /** Le tirage : les candidatures deviennent un tableau. */
-export async function lancerTableau(tournamentId: string) {
+export async function lancerTableau(tournamentId: string, mode: "classement" | "hasard" = "classement") {
   const auteur = await requireRole("admin", "manager");
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
   if (!t) return { ok: false as const, error: "Tournoi introuvable." };
   if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
 
   const { tirerLeTableau, tirerLesPoules } = await import("@/lib/tournaments");
+  const tirage = mode === "hasard" ? "hasard" : "classement";
   const res =
-    t.format === "poules" ? await tirerLesPoules(tournamentId) : await tirerLeTableau(tournamentId);
+    t.format === "poules" ? await tirerLesPoules(tournamentId, tirage) : await tirerLeTableau(tournamentId, tirage);
   if (!res.ok) return res;
 
   const joueurs = await db
@@ -2906,9 +2907,9 @@ export async function ouvrirLeTableauFinal(tournamentId: string) {
   return res;
 }
 
-/** Le résultat d'un duel, saisi par l'organisateur. */
+/** Le résultat d'un duel, saisi par l'organisateur — ou par l'arbitre annoncé pour ce duel. */
 export async function noterDuel(duelId: string, scoreA: number, scoreB: number) {
-  const auteur = await requireRole("admin", "manager");
+  const auteur = await requireUser();
   const duel = (
     await db.select().from(tournamentMatches).where(eq(tournamentMatches.id, duelId)).limit(1)
   )[0];
@@ -2916,7 +2917,10 @@ export async function noterDuel(duelId: string, scoreA: number, scoreB: number) 
 
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, duel.tournamentId)).limit(1))[0];
   if (!t) return { ok: false as const, error: "Tournoi introuvable." };
-  if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
+  const organisateur = auteur.role === "admin" || (auteur.role === "manager" && t.venueId === auteur.venueId);
+  if (!organisateur && duel.refereeId !== auteur.id) {
+    return { ok: false as const, error: "Seul l'arbitre de ce duel ou l'organisateur saisit le score." };
+  }
 
   const { noterResultat, getTournamentById } = await import("@/lib/tournaments");
   const res = await noterResultat(duelId, scoreA, scoreB);
@@ -3950,4 +3954,91 @@ export async function suivreDiffuseur(hostId: string, arreter = false) {
   revalidatePath("/app/diffuseurs");
   revalidatePath(`/app/joueurs/${hostId}`);
   return { ok: true as const, suivi: !arreter };
+}
+
+/* ---------------------------------------------------- placement et arbitres */
+
+/** L'organisateur du tournoi : l'admin, ou le gérant de sa salle. */
+async function organisateurDe(tournamentId: string) {
+  const auteur = await requireRole("admin", "manager");
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return null;
+  if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
+  return { auteur, t };
+}
+
+function revaliderTournoi(slug: string) {
+  revalidatePath(`/app/tournois/${slug}`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath("/gerant/tournois", "layout");
+  revalidatePath("/admin/tournois", "layout");
+}
+
+/** Placer à la main : échanger deux joueurs de poule ou de case sur l'arbre. */
+export async function echangerPlaces(tournamentId: string, joueurA: string, joueurB: string) {
+  const o = await organisateurDe(tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+  const { echangerJoueurs } = await import("@/lib/tournaments");
+  const res = await echangerJoueurs(tournamentId, joueurA, joueurB);
+  if (res.ok) revaliderTournoi(o.t.slug);
+  return res;
+}
+
+/**
+ * Annoncer un arbitre pour le tournoi, par son numéro.
+ *
+ * Il rejoint la liste des arbitres de l'événement (partagée par tous les
+ * tableaux de l'affiche), et peut ensuite être désigné sur chaque duel.
+ */
+export async function ajouterArbitreTournoi(tournamentId: string, telephone: string) {
+  const o = await organisateurDe(tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+  if (!o.t.eventId) return { ok: false as const, error: "Enregistre d'abord le tournoi : il n'a pas encore d'affiche." };
+  const phone = normalizePhone(telephone);
+  const arbitre = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
+  if (!arbitre) return { ok: false as const, error: "Aucun compte avec ce numéro. L'arbitre doit d'abord s'inscrire." };
+
+  const deja = (
+    await db
+      .select({ id: matchOfficials.id })
+      .from(matchOfficials)
+      .where(and(eq(matchOfficials.eventId, o.t.eventId), eq(matchOfficials.userId, arbitre.id)))
+      .limit(1)
+  )[0];
+  if (!deja) {
+    await db.insert(matchOfficials).values({ id: uid(), eventId: o.t.eventId, userId: arbitre.id, role: "referee", createdBy: o.auteur.id });
+    await notify(arbitre.id, `Arbitre · ${o.t.title}`, "Tu es annoncé comme arbitre du tournoi. Tes duels apparaîtront sur sa page.", "event", `/app/tournois/${o.t.slug}`);
+  }
+  revaliderTournoi(o.t.slug);
+  return { ok: true as const, nom: arbitre.name };
+}
+
+export async function retirerArbitreTournoi(tournamentId: string, userId: string) {
+  const o = await organisateurDe(tournamentId);
+  if (!o || !o.t.eventId) return { ok: false as const, error: "Tournoi introuvable." };
+  await db.delete(matchOfficials).where(and(eq(matchOfficials.eventId, o.t.eventId), eq(matchOfficials.userId, userId)));
+  revaliderTournoi(o.t.slug);
+  return { ok: true as const };
+}
+
+/** Désigner l'arbitre et la table d'un duel. L'arbitre est prévenu. */
+export async function designerDuel(duelId: string, refereeId: string | null, tableLabel: string) {
+  const duel = (await db.select().from(tournamentMatches).where(eq(tournamentMatches.id, duelId)).limit(1))[0];
+  if (!duel) return { ok: false as const, error: "Duel introuvable." };
+  const o = await organisateurDe(duel.tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+
+  const table = tableLabel.trim().slice(0, 30);
+  await db.update(tournamentMatches).set({ refereeId: refereeId || null, tableLabel: table }).where(eq(tournamentMatches.id, duelId));
+
+  if (refereeId && refereeId !== duel.refereeId) {
+    const noms = await db
+      .select({ id: tournamentPlayers.id, nom: tournamentPlayers.nickname })
+      .from(tournamentPlayers)
+      .where(inArray(tournamentPlayers.id, [duel.playerAId, duel.playerBId].filter(Boolean) as string[]));
+    const qui = noms.map((n) => n.nom).join(" contre ") || "un duel";
+    await notify(refereeId, `À toi d'arbitrer · ${o.t.title}`, `${qui}${table ? ` · table ${table}` : ""}. Saisis le score depuis la page du tournoi.`, "event", `/app/tournois/${o.t.slug}`);
+  }
+  revaliderTournoi(o.t.slug);
+  return { ok: true as const };
 }

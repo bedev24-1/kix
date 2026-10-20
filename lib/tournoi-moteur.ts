@@ -61,23 +61,20 @@ export function duelsDePoule(db: Db, tournamentId: string) {
  * Le tableau entier est créé d'un coup, tours vides compris : on voit dès
  * l'ouverture où mène chaque victoire.
  */
-export async function tirerLeTableau(db: Db, tournamentId: string): Promise<{ ok: true; duels: number } | { ok: false; error: string }> {
+export async function tirerLeTableau(
+  db: Db,
+  tournamentId: string,
+  mode: ModeDeTirage = "classement",
+): Promise<{ ok: true; duels: number } | { ok: false; error: string }> {
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
   if (!t) return { ok: false, error: "Tournoi introuvable." };
   if (t.status === "encours" || t.status === "termine") {
     return { ok: false, error: "Le tableau est déjà tiré." };
   }
 
-  const tous = await db
-    .select({ player: tournamentPlayers, points: users.points })
-    .from(tournamentPlayers)
-    .innerJoin(users, eq(users.id, tournamentPlayers.userId))
-    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")))
-    .orderBy(desc(users.points), asc(tournamentPlayers.createdAt));
-
   // Un droit d'inscription impayé ne prend pas de place au tableau : le tirage
   // se fait une fois, et un tableau qu'on refait fait perdre la salle.
-  const inscrits = tous.filter((r) => r.player.fee === 0 || r.player.payment === "paye");
+  const { tous, regles: inscrits } = await inscritsClasses(db, tournamentId, mode);
   if (inscrits.length < 2) {
     return {
       ok: false,
@@ -133,7 +130,19 @@ export async function tirerLeTableau(db: Db, tournamentId: string): Promise<{ ok
 /* -------------------------------------------------------------- poules */
 
 /** Les inscrits retenus et réglés, dans l'ordre des têtes de série. */
-async function inscritsClasses(db: Db, tournamentId: string) {
+/** Fisher-Yates : chaque ordre a la même chance — c'est tout ce qu'on demande à un tirage au sort. */
+function melanger<T>(liste: T[]): T[] {
+  const copie = [...liste];
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copie[i], copie[j]] = [copie[j], copie[i]];
+  }
+  return copie;
+}
+
+export type ModeDeTirage = "classement" | "hasard";
+
+async function inscritsClasses(db: Db, tournamentId: string, mode: ModeDeTirage = "classement") {
   const tous = await db
     .select({ player: tournamentPlayers, points: users.points })
     .from(tournamentPlayers)
@@ -141,7 +150,9 @@ async function inscritsClasses(db: Db, tournamentId: string) {
     .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")))
     .orderBy(desc(users.points), asc(tournamentPlayers.createdAt));
 
-  return { tous, regles: tous.filter((r) => r.player.fee === 0 || r.player.payment === "paye") };
+  const regles = tous.filter((r) => r.player.fee === 0 || r.player.payment === "paye");
+  // Au hasard : plus de têtes de série, l'ordre est celui du sort.
+  return { tous, regles: mode === "hasard" ? melanger(regles) : regles };
 }
 
 /**
@@ -155,12 +166,13 @@ async function inscritsClasses(db: Db, tournamentId: string) {
 export async function tirerLesPoules(
   db: Db,
   tournamentId: string,
+  mode: ModeDeTirage = "classement",
 ): Promise<{ ok: true; poules: number; duels: number } | { ok: false; error: string }> {
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
   if (!t) return { ok: false, error: "Tournoi introuvable." };
   if (t.status === "encours" || t.status === "termine") return { ok: false, error: "Le tirage a déjà eu lieu." };
 
-  const { tous, regles } = await inscritsClasses(db, tournamentId);
+  const { tous, regles } = await inscritsClasses(db, tournamentId, mode);
   if (regles.length < 3) {
     return {
       ok: false,
@@ -449,4 +461,48 @@ async function cloreSiFini(db: Db, tournamentId: string) {
   if (t?.eventId) {
     await db.update(events).set({ endedAt: new Date() }).where(eq(events.id, t.eventId));
   }
+}
+
+/**
+ * Échanger deux joueurs de place — dans les poules ou sur l'arbre.
+ *
+ * C'est le placement à la main : l'organisateur tire, puis corrige (deux amis
+ * dans la même poule, un favori à éloigner). On échange les deux identités
+ * partout où elles figurent dans la phase en cours : poule, tête de série,
+ * duels, exemption. Une fois qu'un des deux a joué, on ne touche plus à rien —
+ * un résultat ne se déplace pas.
+ */
+export async function echangerJoueurs(
+  db: Db,
+  tournamentId: string,
+  idA: string,
+  idB: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (idA === idB) return { ok: false, error: "Choisis deux joueurs différents." };
+  const [a, b] = await Promise.all(
+    [idA, idB].map(async (id) =>
+      (await db.select().from(tournamentPlayers).where(and(eq(tournamentPlayers.id, id), eq(tournamentPlayers.tournamentId, tournamentId))).limit(1))[0],
+    ),
+  );
+  if (!a || !b) return { ok: false, error: "Joueur introuvable dans ce tableau." };
+
+  const duels = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournamentId));
+  const tableauOuvert = duels.some((d) => d.stage === "tableau");
+  const phase = duels.filter((d) => d.stage === (tableauOuvert ? "tableau" : "poule"));
+  const lesSiens = phase.filter((d) => [d.playerAId, d.playerBId].some((p) => p === idA || p === idB));
+  if (lesSiens.some((d) => d.status === "termine")) {
+    return { ok: false, error: "L'un des deux a déjà joué : sa place ne bouge plus." };
+  }
+  if (lesSiens.length === 0) return { ok: false, error: "Ces joueurs ne sont pas encore placés." };
+
+  const autre = (id: string | null) => (id === idA ? idB : id === idB ? idA : id);
+  for (const d of lesSiens) {
+    await db
+      .update(tournamentMatches)
+      .set({ playerAId: autre(d.playerAId), playerBId: autre(d.playerBId), winnerId: autre(d.winnerId) })
+      .where(eq(tournamentMatches.id, d.id));
+  }
+  await db.update(tournamentPlayers).set({ groupe: b.groupe, seed: b.seed }).where(eq(tournamentPlayers.id, a.id));
+  await db.update(tournamentPlayers).set({ groupe: a.groupe, seed: a.seed }).where(eq(tournamentPlayers.id, b.id));
+  return { ok: true };
 }

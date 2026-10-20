@@ -2,11 +2,12 @@ import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, events, tickets } from "@/db";
-import { Bracket, type DuelView } from "@/components/tournoi/Bracket";
-import { Poules, Programme } from "@/components/tournoi/Poules";
+import { db, events, tickets, tournamentMatches } from "@/db";
+import { Programme } from "@/components/tournoi/Poules";
 import { Inscription, type MaCandidature } from "@/components/tournoi/Inscription";
 import { PartageTournoi } from "@/components/tournoi/Partage";
+import { SaisieScore } from "@/components/tournoi/Actions";
+import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -15,14 +16,13 @@ import { nombreDeTours } from "@/lib/bracket";
 import {
   duree,
   getBracket,
-  getClassementDesPoules,
   getDuelsDePoule,
   getPlayers,
   getTournament,
   maCandidature,
   nomsDuTableau,
 } from "@/lib/tournaments";
-import { programme, vuesDesDuelsDePoule, vuesDesPoules } from "@/lib/tournoi-vues";
+import { programme } from "@/lib/tournoi-vues";
 import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
 import { nomDuJeu, regleDuJeu } from "@/lib/regles";
 import { exigenceDuTournoi, ilManque, niveauDe } from "@/lib/niveaux";
@@ -44,11 +44,10 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
 
   const { tournament: t, venue } = lu;
 
-  const [joueurs, duels, poules, classements, noms, mienne, billet] = await Promise.all([
+  const [joueurs, duels, poules, noms, mienne, billet, aArbitrer] = await Promise.all([
     getPlayers(t.id),
     getBracket(t.id),
     t.format === "poules" ? getDuelsDePoule(t.id) : Promise.resolve([]),
-    t.format === "poules" ? getClassementDesPoules(t.id) : Promise.resolve([]),
     nomsDuTableau(t.id),
     maCandidature(t.id, user.id),
     t.eventId
@@ -64,6 +63,12 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
           )
           .limit(1)
       : Promise.resolve([]),
+    // Les duels confiés à ce joueur comme arbitre, encore à jouer.
+    db
+      .select()
+      .from(tournamentMatches)
+      .where(and(eq(tournamentMatches.tournamentId, t.id), eq(tournamentMatches.refereeId, user.id)))
+      .then((rows) => rows.filter((d) => d.status !== "termine" && d.status !== "exempt" && d.playerAId && d.playerBId)),
   ]);
 
   // Le prix de la place spectateur vit sur l'événement jumeau : c'est lui qui
@@ -74,21 +79,6 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
 
   const retenus = joueurs.filter((j) => j.player.status === "accepte");
   const tours = duels.length ? Math.max(...duels.map((d) => d.round)) : nombreDeTours(retenus.length);
-
-  const vues: DuelView[] = duels.map((d) => ({
-    id: d.id,
-    round: d.round,
-    slot: d.slot,
-    aId: d.playerAId,
-    bId: d.playerBId,
-    a: d.playerAId ? noms.get(d.playerAId) : undefined,
-    b: d.playerBId ? noms.get(d.playerBId) : undefined,
-    scoreA: d.scoreA,
-    scoreB: d.scoreB,
-    winnerId: d.winnerId,
-    raceTo: d.raceTo,
-    status: d.status,
-  }));
 
   const candidature: MaCandidature = mienne
     ? {
@@ -103,8 +93,6 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
 
   const champion = t.winnerId ? joueurs.find((j) => j.user.id === t.winnerId) : undefined;
 
-  const vuesPoules = vuesDesPoules(classements, noms, t.qualifiers);
-  const vuesDuelsPoules = vuesDesDuelsDePoule(poules, noms);
   const { aVenir, joues } = programme([...poules, ...duels], noms, tours);
 
   return (
@@ -236,25 +224,30 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
           </section>
         ) : null}
 
-        {vuesPoules.length > 0 ? (
+        {/* Les duels que ce joueur arbitre : il en saisit le score d'ici. */}
+        {aArbitrer.length > 0 ? (
           <section className="flex flex-col gap-3">
-            <h2 className="text-[15px] font-semibold">Les poules</h2>
-            <Poules
-              classements={vuesPoules}
-              duels={vuesDuelsPoules}
-              qualifiesParPoule={t.qualifiers}
-            />
+            <h2 className="text-[15px] font-semibold">Tes duels à arbitrer</h2>
+            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:gap-3">
+              {aArbitrer.map((d) => (
+                <div key={d.id} className="flex flex-col gap-1">
+                  {d.tableLabel ? <span className="text-[11px] text-muted">Table {d.tableLabel}</span> : null}
+                  <SaisieScore
+                    duelId={d.id}
+                    raceTo={d.raceTo}
+                    nomA={noms.get(d.playerAId!)?.nom ?? "Joueur A"}
+                    nomB={noms.get(d.playerBId!)?.nom ?? "Joueur B"}
+                    scoreA={d.scoreA}
+                    scoreB={d.scoreB}
+                    termine={false}
+                  />
+                </div>
+              ))}
+            </div>
           </section>
         ) : null}
 
-        {vues.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-[15px] font-semibold">
-              {t.format === "poules" ? "Le tableau final" : "Le tableau"}
-            </h2>
-            <Bracket duels={vues} tours={tours} />
-          </section>
-        ) : null}
+        <TableauEnDirect t={t} base="/app/tournois" />
 
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-3">

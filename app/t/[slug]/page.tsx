@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Cagnottes } from "@/components/tournoi/Cagnottes";
+import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { heureDebut, periode } from "@/lib/periode";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -60,7 +61,8 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
     : jumeau?.day || "Date à confirmer";
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-5 px-5 py-6">
+    <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-8 px-5 py-6">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
       <div className="relative h-72 overflow-hidden rounded-panel border border-line">
         <Photo src={t.image} alt={t.title} fill sizes="600px" className="object-cover" priority />
         <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/35 to-black/90" />
@@ -114,6 +116,10 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
           </Link>
         ) : null}
       </div>
+      </div>
+
+      {/* Le tournoi en direct : groupes, arbre, arbitres — sans compte. */}
+      <TableauEnDirect t={t} base="/t" />
     </main>
   );
 }

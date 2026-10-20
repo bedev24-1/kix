@@ -337,6 +337,13 @@
       "when": 1790405000000,
       "tag": "0047_fin-tournoi",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790410000000,
+      "tag": "0048_arbitres-duels",
+      "breakpoints": true
     }
   ]
 }

@@ -65,13 +65,19 @@ export const getClassementDesPoules = (tournamentId: string) => moteur.classemen
 export const poulesTerminees = (tournamentId: string) => moteur.poulesTerminees(db, tournamentId);
 
 /** Le tirage des poules, sur la base de l'application. */
-export const tirerLesPoules = (tournamentId: string) => moteur.tirerLesPoules(db, tournamentId);
+export const tirerLesPoules = (tournamentId: string, mode?: moteur.ModeDeTirage) =>
+  moteur.tirerLesPoules(db, tournamentId, mode);
 
 /** L'ouverture du tableau entre les qualifiés. */
 export const ouvrirLeTableau = (tournamentId: string) => moteur.ouvrirLeTableau(db, tournamentId);
 
 /** Le tirage au sort du tableau, sur la base de l'application. */
-export const tirerLeTableau = (tournamentId: string) => moteur.tirerLeTableau(db, tournamentId);
+export const tirerLeTableau = (tournamentId: string, mode?: moteur.ModeDeTirage) =>
+  moteur.tirerLeTableau(db, tournamentId, mode);
+
+/** Échanger deux joueurs de place, tant qu'aucun n'a joué. */
+export const echangerJoueurs = (tournamentId: string, a: string, b: string) =>
+  moteur.echangerJoueurs(db, tournamentId, a, b);
 
 /** Le résultat d'un duel, sur la base de l'application. */
 export const noterResultat = (duelId: string, scoreA: number, scoreB: number) =>
