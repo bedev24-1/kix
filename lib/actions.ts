@@ -4024,13 +4024,17 @@ export async function echangerPlaces(tournamentId: string, joueurA: string, joue
  * Il rejoint la liste des arbitres de l'événement (partagée par tous les
  * tableaux de l'affiche), et peut ensuite être désigné sur chaque duel.
  */
-export async function ajouterArbitreTournoi(tournamentId: string, telephone: string) {
+export async function ajouterArbitreTournoi(tournamentId: string, arbitreId: string) {
   const o = await organisateurDe(tournamentId);
   if (!o) return { ok: false as const, error: "Tournoi introuvable." };
   if (!o.t.eventId) return { ok: false as const, error: "Enregistre d'abord le tournoi : il n'a pas encore d'affiche." };
-  const phone = normalizePhone(telephone);
-  const arbitre = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
-  if (!arbitre) return { ok: false as const, error: "Aucun compte avec ce numéro. L'arbitre doit d'abord s'inscrire." };
+  // Un arbitre est un profil Master Break validé et en vigueur, pas un nom tapé.
+  const { aLeProfil } = await import("@/lib/profils-db");
+  if (!(await aLeProfil(arbitreId, "arbitre"))) {
+    return { ok: false as const, error: "Ce compte n'a pas de profil arbitre actif. L'administration l'accorde dans Profils." };
+  }
+  const arbitre = (await db.select().from(users).where(eq(users.id, arbitreId)).limit(1))[0];
+  if (!arbitre) return { ok: false as const, error: "Compte introuvable." };
 
   const deja = (
     await db

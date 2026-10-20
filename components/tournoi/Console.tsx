@@ -26,6 +26,7 @@ import {
   tourEnCours,
 } from "@/lib/tournaments";
 import { nomDeLaPoule } from "@/lib/poules";
+import { arbitresActifs } from "@/lib/profils-db";
 import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
 import { f } from "@/lib/format";
@@ -193,10 +194,14 @@ export async function ConsoleTournoi({
       <section className="flex flex-col gap-3">
         <h2 className="text-[15px] font-semibold">Arbitres du tournoi</h2>
         <p className="text-[12px] text-muted">
-          Annoncés ici, ils se désignent ensuite duel par duel, avec la table. L&apos;arbitre d&apos;un duel en saisit
-          le score depuis la page du tournoi.
+          Choisis parmi les arbitres Master Break actifs, puis désigne-les duel par duel, avec la table.
+          L&apos;arbitre d&apos;un duel en saisit le score depuis la page du tournoi.
         </p>
-        <GestionArbitres tournamentId={tournoi.id} arbitres={arbitres} />
+        <GestionArbitres
+          tournamentId={tournoi.id}
+          arbitres={arbitres}
+          disponibles={(await arbitresActifs()).map((a) => ({ id: a.id, nom: a.nom, phone: displayPhone(a.phone) }))}
+        />
       </section>
 
       {tournoi.status === "encours" && placables.length > 1 ? (

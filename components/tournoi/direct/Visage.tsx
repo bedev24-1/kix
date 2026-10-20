@@ -12,3 +12,10 @@ export function Visage({ nom, avatar, taille = 26, className }: { nom: string; a
     </span>
   );
 }
+
+/** Le badge des joueurs pro, à côté de leur nom. */
+export function BadgePro() {
+  return (
+    <span className="shrink-0 rounded-sm bg-gold px-1 text-[8.5px] leading-[14px] font-bold tracking-[0.06em] text-gold-ink">PRO</span>
+  );
+}

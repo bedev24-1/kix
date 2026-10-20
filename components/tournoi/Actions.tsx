@@ -377,34 +377,51 @@ export function Placement({
   );
 }
 
-/** La liste des arbitres du tournoi : on en ajoute par numéro, on en retire. */
+/**
+ * Les arbitres du tournoi, choisis parmi les profils arbitres actifs de
+ * Master Break — validés et abonnés, ou accordés par l'administration.
+ */
 export function GestionArbitres({
   tournamentId,
   arbitres,
+  disponibles,
 }: {
   tournamentId: string;
   arbitres: { id: string; nom: string }[];
+  disponibles: { id: string; nom: string; phone: string }[];
 }) {
   const { faire, pending } = useGeste();
-  const [tel, setTel] = useState("");
+  const [choix, setChoix] = useState("");
+  const restants = disponibles.filter((d) => !arbitres.some((a) => a.id === d.id));
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex gap-2">
-        <input
-          value={tel}
-          onChange={(e) => setTel(e.target.value)}
-          inputMode="tel"
-          placeholder="Numéro de l'arbitre (compte Master Break)"
-          className="h-11 min-w-0 grow rounded-none border border-line bg-surface px-3 text-[13px] text-ink"
-        />
-        <Bouton
-          accent
-          pending={pending}
-          onClick={() => faire(() => ajouterArbitreTournoi(tournamentId, tel), "Arbitre annoncé", "Il est prévenu.")}
-        >
-          Ajouter
-        </Bouton>
-      </div>
+      {disponibles.length === 0 ? (
+        <p className="text-[12px] text-muted">
+          Aucun arbitre actif sur Master Break. L&apos;administration en accorde dans Profils, ou valide les demandes.
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <select
+            value={choix}
+            onChange={(e) => setChoix(e.target.value)}
+            className="h-11 min-w-0 grow rounded-none border border-line bg-surface px-3 text-[13px] text-ink"
+          >
+            <option value="">Choisir un arbitre…</option>
+            {restants.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nom} · {d.phone}
+              </option>
+            ))}
+          </select>
+          <Bouton
+            accent
+            pending={pending}
+            onClick={() => faire(() => ajouterArbitreTournoi(tournamentId, choix), "Arbitre annoncé", "Il est prévenu.")}
+          >
+            Ajouter
+          </Bouton>
+        </div>
+      )}
       {arbitres.length ? (
         <div className="flex flex-wrap gap-1.5">
           {arbitres.map((a) => (

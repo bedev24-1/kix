@@ -2,21 +2,21 @@ import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { ScreenHeader } from "@/components/mb/AppHeader";
 import { ConvertButton } from "@/components/mb/ConvertButton";
-import { MaPhoto } from "@/components/joueur/MaPhoto";
-import { MonSexe } from "@/components/joueur/MonSexe";
+import { CarteProfil } from "@/components/joueur/CarteProfil";
+import { ProfilsSpeciaux } from "@/components/joueur/ProfilsSpeciaux";
+import { mesProfils } from "@/lib/profils-db";
+import { enVigueur } from "@/lib/profils";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import {
   BoltIcon,
   CartIcon,
   ChartIcon,
-  ChevronRightIcon,
   ClockIcon,
   TableIcon,
   TargetIcon,
   TicketIcon,
   TrophyIcon,
-  UserIcon,
 } from "@/components/icons";
 import { getLeaderboard, getRank } from "@/lib/queries";
 import { estMembre, joursRestants } from "@/lib/membres";
@@ -31,6 +31,7 @@ export const metadata = { title: "Master Rank" };
 
 export default async function RewardsPage() {
   const user = await requireUser();
+  const profils = await mesProfils(user.id);
   const { nombreDeSuivis } = await import("@/lib/suivis");
   const [leaderboard, rank, suivis] = await Promise.all([
     getLeaderboard(6),
@@ -48,66 +49,27 @@ export default async function RewardsPage() {
     <>
       <ScreenHeader title="Master Rank" subtitle="Chaque partie scannée compte des points, chaque tournoi te classe." />
 
-      <MaPhoto nom={user.name} avatar={user.avatar} />
-      <MonSexe sexe={user.sexe} />
-
-      {/* Un privilège que personne ne connaît ne fait revenir personne : le
-          joueur doit pouvoir lire ce que valent les paliers. */}
-      <Link href="/app/niveaux" className="press block">
-        <Card shape="panel" className="flex items-center gap-3.5 p-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 text-gold-text">
-            <TrophyIcon size={19} />
-          </span>
-          <span className="flex min-w-0 grow flex-col gap-0.5">
-            <span className="text-[14px] font-semibold">Niveau {niveauDe(user.points)} · {current.name}</span>
-            <span className="truncate text-[11.5px] text-muted">
-              Ce que ton classement ouvre : directs, cours, tournois réservés.
-            </span>
-          </span>
-          <ChevronRightIcon size={16} className="shrink-0 text-muted" />
-        </Card>
-      </Link>
-
-      {/* Le code se dicte à la table pour se faire ajouter : il est ici, en
-          grand, plutôt qu'enfoui dans une page de réglages. */}
-      <Card shape="panel" className="flex items-center gap-3.5 p-4">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
-          <UserIcon size={19} />
-        </span>
-        <span className="flex min-w-0 grow flex-col gap-0.5">
-          <span className="text-[11.5px] text-muted">Ton code joueur</span>
-          <span className="text-[22px] leading-none font-bold tracking-[0.22em] tabular-nums text-gold-text">
-            {user.code}
-          </span>
-        </span>
-        <Link href="/app/amis" className="press shrink-0 text-[12px] text-gold-text">
-          Mes amis
-        </Link>
-      </Card>
-
-      <Link href="/app/abonnement" className="press block">
-        <Card tone={membre ? "gold" : "dashed"} shape="panel" className="flex items-center gap-3.5 p-4">
-          <span
-            className={cn(
-              "grid h-11 w-11 shrink-0 place-items-center rounded-full",
-              membre ? "bg-gold text-gold-ink" : "bg-surface-2 text-muted",
-            )}
-          >
-            <BoltIcon size={20} />
-          </span>
-          <span className="flex min-w-0 grow flex-col gap-0.5">
-            <span className="truncate text-[14px] font-semibold">
-              {membre ? "Abonné Master Break" : "Abonnement Master Break"}
-            </span>
-            <span className="truncate text-[11.5px] text-muted">
-              {membre
-                ? `${restants} jour${restants > 1 ? "s" : ""} restant${restants > 1 ? "s" : ""}`
-                : "Tous les directs, sans billet à l'unité"}
-            </span>
-          </span>
-          <ChevronRightIcon size={16} className="shrink-0 text-muted" />
-        </Card>
-      </Link>
+      <CarteProfil
+        nom={user.name}
+        avatar={user.avatar}
+        code={user.code}
+        sexe={user.sexe}
+        niveau={niveauDe(user.points)}
+        nomNiveau={current.name}
+        membre={membre}
+        joursRestants={restants}
+        pro={enVigueur(profils.pro)}
+        arbitre={enVigueur(profils.arbitre)}
+      />
+      <ProfilsSpeciaux
+        phone={user.phone}
+        etats={{
+          pro: profils.pro ? { status: profils.pro.status, actifJusqu: profils.pro.actifJusqu?.toISOString() ?? null, enVigueur: enVigueur(profils.pro) } : null,
+          arbitre: profils.arbitre
+            ? { status: profils.arbitre.status, actifJusqu: profils.arbitre.actifJusqu?.toISOString() ?? null, enVigueur: enVigueur(profils.arbitre) }
+            : null,
+        }}
+      />
 
       <div className="grid gap-3.5 lg:grid-cols-2 lg:items-start lg:gap-8">
       <div className="flex flex-col gap-3.5 lg:gap-5">

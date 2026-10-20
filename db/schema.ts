@@ -396,6 +396,35 @@ export const tournamentPlayers = mb.table(
   (t) => [index("tp_tournament_idx").on(t.tournamentId), index("tp_user_idx").on(t.userId)],
 );
 
+/**
+ * Les profils spéciaux d'un compte : joueur pro, arbitre.
+ *
+ * Un par compte et par type. Ils s'obtiennent par abonnement — l'arbitre
+ * après validation de l'administration — ou sont accordés directement par
+ * elle, sans paiement. `actif_jusqu` nul : sans limite (accord de l'admin).
+ */
+export const profilsSpeciaux = mb.table(
+  "profils_speciaux",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // pro | arbitre
+    type: text("type").notNull(),
+    // demande | valide (à payer) | actif | refuse | retire
+    status: text("status").notNull().default("demande"),
+    actifJusqu: timestamp("actif_jusqu", { withTimezone: true }),
+    // paiement | admin
+    source: text("source").notNull().default("paiement"),
+    motivation: text("motivation").notNull().default(""),
+    decidePar: uuid("decide_par").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("profils_speciaux_user_type_idx").on(t.userId, t.type)],
+);
+
 /** Un duel du tableau. */
 export const tournamentMatches = mb.table(
   "tournament_matches",

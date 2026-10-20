@@ -18,15 +18,30 @@ import { changerMaPhoto } from "@/lib/actions";
  * pour la photo d'une bande : on dépose depuis le téléphone, ou on colle une
  * adresse.
  */
-export function MaPhoto({ nom, avatar }: { nom: string; avatar: string | null }) {
+export function MaPhoto({ nom, avatar, compact = false }: { nom: string; avatar: string | null; compact?: boolean }) {
   const router = useRouter();
   const { notify } = useSnackbar();
   const [ouvert, setOuvert] = useState(false);
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string>();
 
+  // Compact : la seule photo, touchable, pour la carte de profil.
+  const declencheur = compact ? (
+    <button
+      onClick={() => setOuvert(true)}
+      aria-label={avatar ? "Changer ma photo" : "Ajouter une photo"}
+      className="press relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-gold/50 bg-surface-2 text-[16px] font-semibold text-dim"
+    >
+      {avatar ? <Photo src={avatar} alt={nom} fill sizes="64px" className="object-cover" /> : nom.slice(0, 2).toUpperCase()}
+      <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[8.5px] font-semibold text-white uppercase">
+        {avatar ? "Changer" : "Photo"}
+      </span>
+    </button>
+  ) : null;
+
   return (
     <>
+      {compact ? declencheur : (
       <Card shape="panel" className="flex items-center gap-3.5 p-4">
         <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-surface-2 text-[15px] font-semibold text-dim">
           {avatar ? (
@@ -48,6 +63,7 @@ export function MaPhoto({ nom, avatar }: { nom: string; avatar: string | null })
           {avatar ? "Changer" : "Ajouter"}
         </button>
       </Card>
+      )}
 
       <Sheet open={ouvert} onClose={() => setOuvert(false)} title="Ma photo de profil">
         <form

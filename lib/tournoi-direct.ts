@@ -5,6 +5,7 @@ import { db, matchOfficials, tournamentMatches, tournamentPlayers, tournaments, 
 import { getClassementDesPoules as classementDesPoules } from "@/lib/tournaments";
 import { nomDeLaPoule } from "@/lib/poules";
 import { ordreDeJeu } from "@/lib/double";
+import { idsPro } from "@/lib/profils-db";
 
 /**
  * Tout ce que montre un tableau en direct, en un seul appel : les poules
@@ -15,7 +16,7 @@ import { ordreDeJeu } from "@/lib/double";
  * recharger, si un score a bougé depuis.
  */
 
-export type Visage = { id: string; userId: string; nom: string; avatar: string | null; seed: number | null };
+export type Visage = { id: string; userId: string; nom: string; avatar: string | null; seed: number | null; pro?: boolean };
 
 export type DuelVue = {
   id: string;
@@ -119,8 +120,9 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
       : Promise.resolve([] as { id: string; nom: string; avatar: string | null }[]),
   ]);
 
+  const pros = await idsPro(joueurs.map((j) => j.userId));
   const visages = new Map<string, Visage>(
-    joueurs.map((j) => [j.id, { id: j.id, userId: j.userId, nom: j.nickname || j.nom, avatar: j.avatar, seed: j.seed }]),
+    joueurs.map((j) => [j.id, { id: j.id, userId: j.userId, nom: j.nickname || j.nom, avatar: j.avatar, seed: j.seed, pro: pros.has(j.userId) }]),
   );
 
   // Les arbitres désignés sur un duel sans être dans la liste restent visibles.

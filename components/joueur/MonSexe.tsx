@@ -8,7 +8,7 @@ import { changerMonSexe } from "@/lib/actions";
 import { cn } from "@/lib/cn";
 
 /** Homme ou femme : ce qui ouvre les tableaux hommes, dames et mixtes. */
-export function MonSexe({ sexe }: { sexe: string | null }) {
+export function MonSexe({ sexe, compact = false }: { sexe: string | null; compact?: boolean }) {
   const router = useRouter();
   const { notify } = useSnackbar();
   const [pending, start] = useTransition();
@@ -19,6 +19,29 @@ export function MonSexe({ sexe }: { sexe: string | null }) {
       if (!res.ok) notify("Impossible", { detail: res.error, tone: "warn" });
       else router.refresh();
     });
+
+  const choix = (
+    <div className="grid grid-cols-2 gap-2">
+      {[
+        ["homme", "Un homme"],
+        ["femme", "Une femme"],
+      ].map(([valeur, libelle]) => (
+        <button
+          key={valeur}
+          disabled={pending}
+          onClick={() => choisir(valeur)}
+          aria-pressed={sexe === valeur}
+          className={cn(
+            "press h-10 rounded-full border text-[12.5px] transition disabled:opacity-60",
+            sexe === valeur ? "border-gold bg-gold/15 font-semibold text-ink" : "border-line text-dim",
+          )}
+        >
+          {libelle}
+        </button>
+      ))}
+    </div>
+  );
+  if (compact) return choix;
 
   return (
     <Card shape="panel" className="flex flex-col gap-2.5 p-4">

@@ -8,6 +8,7 @@ import {
   events,
   memberPlans,
   memberships,
+  profilsSpeciaux,
   orderItems,
   orders,
   payments,
@@ -51,7 +52,8 @@ export type PaymentKind =
   | "stream"
   | "course"
   | "tournoi"
-  | "abonnement";
+  | "abonnement"
+  | "profil";
 
 export type StartInput = {
   kind: PaymentKind;
@@ -185,6 +187,7 @@ async function fulfil(tx: Tx, payment: Payment) {
   if (payment.kind === "course") return fulfilEnrollment(tx, payment);
   if (payment.kind === "tournoi") return fulfilTournamentEntry(tx, payment);
   if (payment.kind === "abonnement") return fulfilMembership(tx, payment);
+  if (payment.kind === "profil") return fulfilProfil(tx, payment);
 }
 
 async function fulfilPack(tx: Tx, payment: Payment) {
@@ -490,6 +493,29 @@ async function fulfilMembership(tx: Tx, payment: Payment) {
     `${plan?.name ?? `${abo.months} mois`} · ${fcfa(abo.price)} par ${methodLabel[payment.method as PaymentMethod]} · réf. ${shortRef(payment.reference)}. Tous les directs te sont ouverts.`,
     "reward",
     "/app/abonnement",
+    tx,
+  );
+}
+
+/** Profil spécial payé (pro, arbitre) : il s'active, ou se prolonge d'un mois. */
+async function fulfilProfil(tx: Tx, payment: Payment) {
+  const profil = (await tx.select().from(profilsSpeciaux).where(eq(profilsSpeciaux.id, payment.targetId!)).limit(1))[0];
+  if (!profil) return;
+  const { PROFILS, prolongerProfil } = await import("@/lib/profils");
+  const regle = PROFILS[profil.type as keyof typeof PROFILS];
+  if (!regle) return;
+  // Un accord sans limite de l'administration ne se raccourcit pas en payant.
+  const fin = profil.status === "actif" && profil.actifJusqu === null ? null : prolongerProfil(profil.status === "actif" ? profil.actifJusqu : null, regle.jours);
+  await tx
+    .update(profilsSpeciaux)
+    .set({ status: "actif", actifJusqu: fin, source: "paiement", updatedAt: new Date() })
+    .where(eq(profilsSpeciaux.id, profil.id));
+  await notify(
+    profil.userId,
+    `${regle.nom} · profil actif`,
+    `${fin ? `Jusqu'au ${fin.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Sans limite"} · ${fcfa(payment.amount)} · réf. ${shortRef(payment.reference)}.`,
+    "reward",
+    "/app/rewards",
     tx,
   );
 }
