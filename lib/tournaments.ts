@@ -54,7 +54,8 @@ export async function getPlayers(tournamentId: string) {
     .orderBy(asc(tournamentPlayers.seed), desc(tournamentPlayers.createdAt));
 }
 
-export const getBracket = (tournamentId: string) => moteur.getBracket(db, tournamentId);
+/** La phase finale entière : en double élimination, perdants et grande finale compris. */
+export const getBracket = (tournamentId: string) => moteur.phaseFinale(db, tournamentId);
 
 /** Les duels de poule, dans l'ordre des poules. */
 export const getDuelsDePoule = (tournamentId: string) => moteur.duelsDePoule(db, tournamentId);

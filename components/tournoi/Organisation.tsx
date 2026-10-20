@@ -101,6 +101,15 @@ export function FormulaireTournoi({
             options={categories}
           />
           <Select label="Format" name="format" defaultValue={base0?.format} options={formats} />
+          <Select
+            label="Phase finale"
+            name="elimination"
+            defaultValue={base0?.elimination ?? "simple"}
+            options={[
+              { value: "simple", label: "Élimination simple" },
+              { value: "double", label: "Double élimination (tableau des perdants)" },
+            ]}
+          />
           {/* Une liste de tailles courantes, mais toute autre se tape : 88, 40…
               Le moteur complète le tableau par des exemptions. */}
           <Field

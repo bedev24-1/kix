@@ -1,5 +1,6 @@
 import "server-only";
 import { nomDuTour } from "@/lib/bracket";
+import { nomDuDuel } from "@/lib/double";
 import { nomDeLaPoule, type ResultatPoule } from "@/lib/poules";
 import type { LignePoule, DuelDePoule, LigneProgramme } from "@/components/tournoi/Poules";
 import type { TournamentMatch } from "@/db";
@@ -60,7 +61,7 @@ export function programme(
 ): { aVenir: LigneProgramme[]; joues: LigneProgramme[] } {
   const ligne = (d: TournamentMatch): LigneProgramme => ({
     id: d.id,
-    quand: d.stage === "poule" ? `Poule ${nomDeLaPoule(d.groupe ?? 1)}` : nomDuTour(d.round, tours),
+    quand: d.stage === "poule" ? `Poule ${nomDeLaPoule(d.groupe ?? 1)}` : nomDuDuel(d, tours, nomDuTour),
     nomA: quiEst(noms, d.playerAId),
     nomB: quiEst(noms, d.playerBId),
     scoreA: d.scoreA,

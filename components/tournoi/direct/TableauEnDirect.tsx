@@ -2,11 +2,12 @@ import Link from "next/link";
 import { eq, or, sql } from "drizzle-orm";
 import { db, tournaments, type Tournament } from "@/db";
 import { Actualisation } from "@/components/tournoi/direct/Actualisation";
-import { Arbre } from "@/components/tournoi/direct/Arbre";
+import { Arbre, type Section } from "@/components/tournoi/direct/Arbre";
 import { Arbitres } from "@/components/tournoi/direct/Arbitres";
 import { Groupes } from "@/components/tournoi/direct/Groupes";
 import { Visage } from "@/components/tournoi/direct/Visage";
-import { tableauEnDirect } from "@/lib/tournoi-direct";
+import { tableauEnDirect, type DuelVue } from "@/lib/tournoi-direct";
+import { nomDuTour } from "@/lib/bracket";
 import { CATEGORIES } from "@/lib/tournois";
 import { cn } from "@/lib/cn";
 
@@ -94,8 +95,10 @@ export async function TableauEnDirect({
 
       {direct.arbre.length ? (
         <div className="flex flex-col gap-2">
-          <h3 className="text-[14px] font-semibold">Phase finale</h3>
-          <Arbre duels={direct.arbre} tours={direct.tours} />
+          <h3 className="text-[14px] font-semibold">
+            Phase finale{direct.perdants.length ? " · double élimination" : ""}
+          </h3>
+          <Arbre sections={sectionsDeLArbre(direct)} />
         </div>
       ) : null}
 
@@ -109,4 +112,26 @@ export async function TableauEnDirect({
       <Arbitres arbitres={direct.arbitres} />
     </section>
   );
+}
+
+/** Les arbres à dessiner : principal, perdants, grande finale. */
+function sectionsDeLArbre(d: Awaited<ReturnType<typeof tableauEnDirect>>): Section[] {
+  const parTour = (duels: DuelVue[], nom: (r: number) => string) =>
+    [...new Set(duels.map((x) => x.round))]
+      .sort((a, b) => a - b)
+      .map((r) => ({ titre: nom(r), duels: duels.filter((x) => x.round === r) }))
+      // Un tour fait tout entier d'exemptions ne se dessine pas (Challonge non plus).
+      .filter((c) => c.duels.some((x) => x.status !== "exempt"));
+  const double = d.perdants.length > 0 || d.finales.length > 0;
+  const sections: Section[] = [
+    { titre: double ? "Tableau principal" : undefined, colonnes: parTour(d.arbre, (r) => nomDuTour(r, d.tours)) },
+  ];
+  if (d.perdants.length) {
+    const derniers = Math.max(...d.perdants.map((x) => x.round));
+    sections.push({ titre: "Tableau des perdants", colonnes: parTour(d.perdants, (r) => (r === derniers ? "Finale des perdants" : `Tour ${r}`)) });
+  }
+  // La revanche n'apparaît que si elle se joue.
+  const finales = d.finales.filter((x) => x.round === 1 || x.a || x.b);
+  if (finales.length) sections.push({ titre: "Grande finale", colonnes: finales.map((x) => ({ titre: x.round === 1 ? "Grande finale" : "Revanche", duels: [x] })) });
+  return sections;
 }

@@ -2398,6 +2398,7 @@ export async function saveTournament(formData: FormData) {
     venueId: venueId || null,
     discipline: str(formData, "discipline") || "8-ball",
     format: str(formData, "format") === "poules" ? "poules" : "direct",
+    elimination: str(formData, "elimination") === "double" ? "double" : "simple",
     groupSize: Math.min(8, Math.max(3, num(formData, "groupSize") || 4)),
     qualifiers: Math.max(1, num(formData, "qualifiers") || 2),
     // Toute taille : le moteur complète à la puissance de 2 par des exemptions.

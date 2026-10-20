@@ -311,6 +311,8 @@ export const tournaments = mb.table("tournaments", {
   /** Tableau mixte : les places réservées à chacun. 0 = pas de quota. */
   placesHommes: integer("places_hommes").notNull().default(0),
   placesDames: integer("places_dames").notNull().default(0),
+  /** La phase finale : simple | double (tableau des perdants, comme sur Challonge). */
+  elimination: text("elimination").notNull().default("simple"),
   /** Le résumé automatique (« 8-ball · 88 joueurs · … ») : haut | bas | masque. */
   resumePosition: text("resume_position").notNull().default("haut"),
   /**
@@ -402,7 +404,7 @@ export const tournamentMatches = mb.table(
     tournamentId: uuid("tournament_id")
       .notNull()
       .references(() => tournaments.id, { onDelete: "cascade" }),
-    /** poule | tableau — la phase à laquelle ce duel appartient. */
+    /** poule | tableau | perdants | finale — la phase à laquelle ce duel appartient. */
     stage: text("stage").notNull().default("tableau"),
     /** Le numéro de poule, pour un duel de poule. Nul sur le tableau. */
     groupe: integer("groupe"),
@@ -421,6 +423,17 @@ export const tournamentMatches = mb.table(
     refereeId: uuid("referee_id").references(() => users.id, { onDelete: "set null" }),
     /** La table où il se joue, telle qu'on l'annonce : « 3 », « Table VIP ». */
     tableLabel: text("table_label").notNull().default(""),
+    /**
+     * Double élimination : où vont le vainqueur et le perdant de ce duel.
+     * Nuls en simple élimination, où le vainqueur monte d'un tour par calcul.
+     */
+    versGagnant: uuid("vers_gagnant"),
+    coteGagnant: text("cote_gagnant"),
+    versPerdant: uuid("vers_perdant"),
+    cotePerdant: text("cote_perdant"),
+    /** Côté vide d'office — une exemption qui se propage, pas un joueur attendu. */
+    videA: boolean("vide_a").notNull().default(false),
+    videB: boolean("vide_b").notNull().default(false),
     // attente | encours | termine | exempt
     status: text("status").notNull().default("attente"),
     createdAt: createdAt(),

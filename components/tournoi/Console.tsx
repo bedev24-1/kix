@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/icons";
 import { nomDuTour } from "@/lib/bracket";
+import { nomDuDuel } from "@/lib/double";
 import {
   duree,
   getBracket,
@@ -76,14 +77,20 @@ export async function ConsoleTournoi({
   const regles = retenus.filter((j) => j.player.fee === 0 || j.player.payment === "paye");
   const ecartes = joueurs.filter((j) => j.player.status === "refuse" || j.player.status === "retire");
 
-  const tours = duels.length ? Math.max(...duels.map((d) => d.round)) : 0;
+  const principal = duels.filter((d) => d.stage === "tableau");
+  const tours = principal.length ? Math.max(...principal.map((d) => d.round)) : 0;
+  const double = duels.some((d) => d.stage === "perdants" || d.stage === "finale");
   const courant = duels.length ? tourEnCours(duels) : 0;
 
   // Les duels du tour en cours dont les deux joueurs sont connus : ce sont les
   // seuls sur lesquels un organisateur a quelque chose à saisir.
   // Les duels sur lesquels l'organisateur a quelque chose à saisir : ceux du
   // tour en cours sur le tableau, et tous ceux des poules qui restent.
-  const duTableau = duels.filter((d) => d.round === courant && d.playerAId && d.playerBId && d.status !== "exempt");
+  // En double élimination, les deux tableaux avancent en même temps : tout
+  // duel dont les deux joueurs sont connus est à jouer.
+  const duTableau = double
+    ? duels.filter((d) => d.status === "attente" && d.playerAId && d.playerBId)
+    : duels.filter((d) => d.round === courant && d.playerAId && d.playerBId && d.status !== "exempt");
   const dePoule = poules.filter((d) => d.status !== "termine" && d.playerAId && d.playerBId);
   const aJouer = [...(enPoules && !finies ? dePoule : duTableau)].sort(
     (a, b) => Number(a.status === "termine") - Number(b.status === "termine"),
@@ -94,7 +101,7 @@ export async function ConsoleTournoi({
   const placeDe = (id: string, groupe: number | null, seed: number | null) => {
     if (duels.length) {
       const d = duels.find((x) => x.status !== "termine" && (x.playerAId === id || x.playerBId === id));
-      return d ? `${nomDuTour(d.round, tours)} · duel ${d.slot + 1}` : "Éliminé ou exempté";
+      return d ? `${nomDuDuel(d, tours, nomDuTour)} · duel ${d.slot + 1}` : "Éliminé ou exempté";
     }
     return groupe ? `Poule ${nomDeLaPoule(groupe)}` : seed ? `#${seed}` : "—";
   };
@@ -160,7 +167,7 @@ export async function ConsoleTournoi({
       {aJouer.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-[15px] font-semibold">
-            {enPoules && !finies ? "Duels de poule · à saisir" : `${nomDuTour(courant, tours)} · à saisir`}
+            {enPoules && !finies ? "Duels de poule · à saisir" : double ? "Phase finale · à saisir" : `${nomDuTour(courant, tours)} · à saisir`}
           </h2>
           <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:gap-3">
             {aJouer.map((d) => (

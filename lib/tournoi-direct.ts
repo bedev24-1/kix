@@ -4,6 +4,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, matchOfficials, tournamentMatches, tournamentPlayers, tournaments, users } from "@/db";
 import { getClassementDesPoules as classementDesPoules } from "@/lib/tournaments";
 import { nomDeLaPoule } from "@/lib/poules";
+import { ordreDeJeu } from "@/lib/double";
 
 /**
  * Tout ce que montre un tableau en direct, en un seul appel : les poules
@@ -18,7 +19,12 @@ export type Visage = { id: string; userId: string; nom: string; avatar: string |
 
 export type DuelVue = {
   id: string;
-  stage: "poule" | "tableau";
+  stage: "poule" | "tableau" | "perdants" | "finale";
+  /** Le numéro du duel, comme sur Challonge : exemptions non comptées. */
+  numero: number | null;
+  /** Qui est attendu d'un côté vide : « Perdant de 16 », « Vainqueur de 3 ». */
+  attenteA: string | null;
+  attenteB: string | null;
   groupe: number | null;
   round: number;
   slot: number;
@@ -53,6 +59,9 @@ export type TableauDirect = {
   poules: GroupeVue[];
   poulesFinies: boolean;
   arbre: DuelVue[];
+  /** Double élimination : le tableau des perdants et la grande finale. */
+  perdants: DuelVue[];
+  finales: DuelVue[];
   tours: number;
   arbitres: ArbitreVue[];
   /** Ceux qui peuvent encore gagner. */
@@ -122,9 +131,44 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
     : [];
   const arbitresConnus = new Map([...arbitresInscrits, ...autres].map((a) => [a.id, a]));
 
+  // Numérotation à la Challonge : ordre de jeu, exemptions non comptées.
+  const finaux = duels.filter((d) => d.stage !== "poule");
+  const toursPrincipal = Math.max(0, ...finaux.filter((d) => d.stage === "tableau").map((d) => d.round));
+  const numeros = new Map<string, number>();
+  [...finaux]
+    .sort((x, y) => ordreDeJeu(x) - ordreDeJeu(y) || x.round - y.round || x.slot - y.slot)
+    .filter((d) => d.status !== "exempt")
+    .forEach((d, i) => numeros.set(d.id, i + 1));
+
+  // D'où vient chaque côté : par les fils en double élimination, par le
+  // calcul (tour précédent, slots 2s et 2s+1) en simple.
+  const attendu = new Map<string, string>();
+  for (const d of finaux) {
+    const n = numeros.get(d.id);
+    if (!n) continue;
+    if (d.versGagnant) attendu.set(`${d.versGagnant}:${d.coteGagnant}`, `Vainqueur de ${n}`);
+    if (d.versPerdant) attendu.set(`${d.versPerdant}:${d.cotePerdant}`, `Perdant de ${n}`);
+  }
+  const parPlace = new Map(finaux.filter((d) => d.stage === "tableau").map((d) => [`${d.round}:${d.slot}`, d]));
+  const attente = (d: (typeof duels)[number], cote: "a" | "b"): string | null => {
+    if (d.stage === "poule") return null;
+    if (cote === "a" ? d.playerAId || d.videA : d.playerBId || d.videB) return null;
+    const fil = attendu.get(`${d.id}:${cote}`);
+    if (fil) return fil;
+    if (d.stage === "tableau" && d.round > 1 && !d.versGagnant) {
+      const source = parPlace.get(`${d.round - 1}:${2 * d.slot + (cote === "a" ? 0 : 1)}`);
+      const n = source ? numeros.get(source.id) : undefined;
+      return n ? `Vainqueur de ${n}` : null;
+    }
+    return null;
+  };
+
   const vue = (d: (typeof duels)[number]): DuelVue => ({
     id: d.id,
-    stage: d.stage === "poule" ? "poule" : "tableau",
+    stage: d.stage === "poule" || d.stage === "perdants" || d.stage === "finale" ? d.stage : "tableau",
+    numero: numeros.get(d.id) ?? null,
+    attenteA: attente(d, "a"),
+    attenteB: attente(d, "b"),
     groupe: d.groupe,
     round: d.round,
     slot: d.slot,
@@ -141,6 +185,8 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
 
   const duelsPoule = duels.filter((d) => d.stage === "poule").map(vue);
   const arbre = duels.filter((d) => d.stage === "tableau").map(vue);
+  const perdants = duels.filter((d) => d.stage === "perdants").map(vue);
+  const finales = duels.filter((d) => d.stage === "finale").map(vue);
   const qualifies = t?.qualifiers ?? 2;
 
   // Les poules, classées comme le moteur les classe — c'est lui qui décide
@@ -179,17 +225,21 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
 
   // Éliminés : perdants d'un duel de l'arbre, et non-qualifiés des poules
   // une fois les poules finies.
+  // En double élimination, une défaite au tableau principal fait descendre,
+  // pas sortir ; et le joueur du principal battu en grande finale a droit à
+  // sa revanche.
   const elimines = new Set<string>();
-  for (const d of arbre) {
-    if (d.status !== "termine" || !d.gagnant) continue;
-    const perdant = d.gagnant === "a" ? d.b : d.a;
-    if (perdant) elimines.add(perdant.id);
+  for (const d of finaux) {
+    if (d.status !== "termine" || !d.winnerId || d.versPerdant) continue;
+    if (d.stage === "finale" && d.round === 1 && d.winnerId === d.playerBId) continue;
+    const perdant = d.winnerId === d.playerAId ? d.playerBId : d.playerAId;
+    if (perdant) elimines.add(perdant);
   }
   if (poulesFinies) for (const p of poules) for (const l of p.lignes) if (!l.qualifie) elimines.add(l.id);
 
   const arbitres: ArbitreVue[] = [...arbitresConnus.values()]
     .map((a) => {
-      const siens = [...duelsPoule, ...arbre].filter((d) => d.arbitre?.id === a.id);
+      const siens = [...duelsPoule, ...arbre, ...perdants, ...finales].filter((d) => d.arbitre?.id === a.id);
       return {
         ...a,
         duels: siens.length,
@@ -203,8 +253,10 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
     poules,
     poulesFinies,
     arbre,
+    perdants,
+    finales,
     // Le tableau est créé d'un coup, finale comprise : son dernier tour est le nombre de tours.
-    tours: arbre.length ? Math.max(...arbre.map((d) => d.round)) : 0,
+    tours: toursPrincipal,
     arbitres,
     enLice: [...visages.values()].filter((v) => !elimines.has(v.id)),
     elimines,

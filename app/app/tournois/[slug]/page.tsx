@@ -78,7 +78,8 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
     : undefined;
 
   const retenus = joueurs.filter((j) => j.player.status === "accepte");
-  const tours = duels.length ? Math.max(...duels.map((d) => d.round)) : nombreDeTours(retenus.length);
+  const principal = duels.filter((d) => d.stage === "tableau");
+  const tours = principal.length ? Math.max(...principal.map((d) => d.round)) : nombreDeTours(retenus.length);
 
   const candidature: MaCandidature = mienne
     ? {

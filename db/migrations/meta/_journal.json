@@ -351,6 +351,13 @@
       "when": 1790415000000,
       "tag": "0049_sexe-places-resume",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790420000000,
+      "tag": "0050_double-elimination",
+      "breakpoints": true
     }
   ]
 }
