@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ScreenHeader } from "@/components/mb/AppHeader";
 import { ConvertButton } from "@/components/mb/ConvertButton";
 import { MaPhoto } from "@/components/joueur/MaPhoto";
+import { MonSexe } from "@/components/joueur/MonSexe";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import {
@@ -48,6 +49,7 @@ export default async function RewardsPage() {
       <ScreenHeader title="Master Rank" subtitle="Chaque partie scannée compte des points, chaque tournoi te classe." />
 
       <MaPhoto nom={user.name} avatar={user.avatar} />
+      <MonSexe sexe={user.sexe} />
 
       {/* Un privilège que personne ne connaît ne fait revenir personne : le
           joueur doit pouvoir lire ce que valent les paliers. */}

@@ -1,5 +1,6 @@
 "use server";
 
+import { lireSexe, placesPour, refusDeSexe } from "@/lib/sexe";
 import { periode } from "@/lib/periode";
 import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
 import { revalidatePath } from "next/cache";
@@ -81,7 +82,7 @@ import { getCurrentUser, homeFor, requireRole, requireUser, SESSION_COOKIE } fro
  */
 export type AuthState = {
   error: string;
-  field?: "phone" | "password" | "name";
+  field?: "phone" | "password" | "name" | "sexe";
   values?: { name?: string; phone?: string };
 } | null;
 
@@ -131,9 +132,11 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const typed = String(formData.get("phone") ?? "");
   const phone = normalizePhone(typed);
   const password = String(formData.get("password") ?? "");
+  const sexe = lireSexe(formData.get("sexe"));
   const values = { name, phone: typed };
 
   if (name.length < 2) return { error: "Dis-nous comment t'appeler.", field: "name", values };
+  if (!sexe) return { error: "Indique si tu es un homme ou une femme : c'est ce qui ouvre les tableaux hommes, dames et mixtes.", field: "sexe", values };
   if (!isValidPhone(phone)) return { error: "Numéro camerounais attendu, par exemple 6 77 45 12 08.", field: "phone", values };
   if (password.length < 6) return { error: "Six caractères au minimum pour le mot de passe.", field: "password", values };
 
@@ -148,6 +151,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     phone,
     passwordHash: await hashPassword(password),
     role: "client",
+    sexe,
   });
   await notify(
     id,
@@ -2397,8 +2401,20 @@ export async function saveTournament(formData: FormData) {
     groupSize: Math.min(8, Math.max(3, num(formData, "groupSize") || 4)),
     qualifiers: Math.max(1, num(formData, "qualifiers") || 2),
     // Toute taille : le moteur complète à la puissance de 2 par des exemptions.
-    size: Math.min(TAILLE_MAX, Math.max(2, num(formData, "size") || 16)),
+    // Un mixte avec ses places par sexe : le tableau en est la somme.
+    size: Math.min(
+      TAILLE_MAX,
+      Math.max(
+        2,
+        (str(formData, "category") === "mixte" && num(formData, "placesHommes") + num(formData, "placesDames")) ||
+          num(formData, "size") ||
+          16,
+      ),
+    ),
     category: CATEGORIES[str(formData, "category")] ? str(formData, "category") : "open",
+    placesHommes: Math.max(0, num(formData, "placesHommes")),
+    placesDames: Math.max(0, num(formData, "placesDames")),
+    resumePosition: ["haut", "bas", "masque"].includes(str(formData, "resumePosition")) ? str(formData, "resumePosition") : "haut",
     // Sèche = une partie gagnante. Le tournoi entier suit la même règle, du
     // premier tour à la finale : on ne rallonge pas une sèche en demi-finale.
     // Une « course à 1 partie » saisie à la main est une sèche, et se range
@@ -2625,6 +2641,14 @@ export async function postuler(_prev: CandidatureState, formData: FormData): Pro
     }
   }
 
+  // Hommes, dames, mixte : le sexe décide, et un mixte a ses places par sexe.
+  const refus = refusDeSexe(t.category, user.sexe);
+  if (refus) return { error: refus };
+  const quota = placesPour(t, lireSexe(user.sexe)!);
+  if (quota !== null && (await retenusDuSexe(tournamentId, lireSexe(user.sexe)!)) >= quota) {
+    return { error: `Les ${quota} places ${user.sexe === "femme" ? "dames" : "hommes"} de ce mixte sont prises.` };
+  }
+
   const deja = (
     await db
       .select({ id: tournamentPlayers.id, status: tournamentPlayers.status })
@@ -2709,6 +2733,15 @@ export async function deciderCandidat(playerId: string, decision: "accepte" | "r
   if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
   if (t.status === "encours" || t.status === "termine") {
     return { ok: false as const, error: "Le tableau est tiré : la liste est close." };
+  }
+
+  if (decision === "accepte" && t.category === "mixte") {
+    const joueur = (await db.select({ sexe: users.sexe }).from(users).where(eq(users.id, ligne.userId)).limit(1))[0];
+    const sexe = lireSexe(joueur?.sexe);
+    const quota = sexe ? placesPour(t, sexe) : null;
+    if (quota !== null && sexe && (await retenusDuSexe(t.id, sexe)) >= quota) {
+      return { ok: false as const, error: `Les ${quota} places ${sexe === "femme" ? "dames" : "hommes"} sont déjà toutes retenues.` };
+    }
   }
 
   await db.update(tournamentPlayers).set({ status: decision }).where(eq(tournamentPlayers.id, playerId));
@@ -4040,5 +4073,25 @@ export async function designerDuel(duelId: string, refereeId: string | null, tab
     await notify(refereeId, `À toi d'arbitrer · ${o.t.title}`, `${qui}${table ? ` · table ${table}` : ""}. Saisis le score depuis la page du tournoi.`, "event", `/app/tournois/${o.t.slug}`);
   }
   revaliderTournoi(o.t.slug);
+  return { ok: true as const };
+}
+
+/** Les joueurs d'un sexe déjà retenus dans un tableau (pour les places d'un mixte). */
+async function retenusDuSexe(tournamentId: string, sexe: "homme" | "femme") {
+  const r = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tournamentPlayers)
+    .innerJoin(users, eq(users.id, tournamentPlayers.userId))
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte"), eq(users.sexe, sexe)));
+  return Number(r[0]?.n ?? 0);
+}
+
+/** Le joueur dit s'il est un homme ou une femme, depuis son profil. */
+export async function changerMonSexe(sexe: string) {
+  const moi = await requireUser();
+  const s = lireSexe(sexe);
+  if (!s) return { ok: false as const, error: "Choix invalide." };
+  await db.update(users).set({ sexe: s }).where(eq(users.id, moi.id));
+  revalidatePath("/app/rewards");
   return { ok: true as const };
 }

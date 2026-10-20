@@ -116,6 +116,24 @@ export function FormulaireTournoi({
           <datalist id="tailles-tableau">
             {TAILLES.map((n) => <option key={n} value={n} />)}
           </datalist>
+          {/* Mixte : le nombre exact de places de chacun. Le tableau en est la
+              somme, et les candidatures s'arrêtent quand un côté est plein. */}
+          <Field
+            label="Mixte · places hommes"
+            name="placesHommes"
+            type="number"
+            min={0}
+            defaultValue={tournoi?.placesHommes || ""}
+            hint="Catégorie Mixte seulement. 0 = pas de quota."
+          />
+          <Field
+            label="Mixte · places femmes"
+            name="placesDames"
+            type="number"
+            min={0}
+            defaultValue={tournoi?.placesDames || ""}
+            hint="Le tableau = hommes + femmes."
+          />
           <Field
             label="Joueurs par poule"
             name="groupSize"
@@ -254,6 +272,16 @@ export function FormulaireTournoi({
           )}
           <ImageField name="image" dossier="tournois" defaultValue={base0?.image ?? "/img/table-rack.jpg"} />
 
+          <Select
+            label="Résumé automatique (8-ball · joueurs · dotation…)"
+            name="resumePosition"
+            defaultValue={base0?.resumePosition ?? "haut"}
+            options={[
+              { value: "haut", label: "Affiché en haut, sur l'affiche" },
+              { value: "bas", label: "Affiché en bas, sous la présentation" },
+              { value: "masque", label: "Masqué" },
+            ]}
+          />
           <TextArea
             label="Texte de présentation (affiché en tête et dans les partages)"
             name="presentation"

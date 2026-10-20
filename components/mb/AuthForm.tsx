@@ -89,6 +89,28 @@ export function AuthForm({ mode, refused }: { mode: Mode; refused?: boolean }) {
         />
       ) : null}
 
+      {mode === "signup" ? (
+        // Le sexe ouvre les tableaux hommes, dames et mixtes : on le demande
+        // une fois, ici, plutôt qu'au pied d'un tournoi.
+        <fieldset className="flex flex-col gap-2">
+          <legend className="label-caps pb-2 text-[11px] text-muted">Je suis</legend>
+          <div className={cn("grid grid-cols-2 gap-2", bad("sexe") && "rounded-none ring-1 ring-warn")}>
+            {[
+              ["homme", "Un homme"],
+              ["femme", "Une femme"],
+            ].map(([valeur, libelle]) => (
+              <label
+                key={valeur}
+                className="flex h-12 cursor-pointer items-center justify-center rounded-none border border-line bg-surface text-[14px] text-dim transition has-checked:border-gold has-checked:bg-gold/15 has-checked:text-ink"
+              >
+                <input type="radio" name="sexe" value={valeur} required className="sr-only" />
+                {libelle}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <Field
         label="Numéro de téléphone"
         name="phone"

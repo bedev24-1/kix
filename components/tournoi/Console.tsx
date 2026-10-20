@@ -229,6 +229,7 @@ export async function ConsoleTournoi({
                     <span className="truncate text-[11.5px] text-muted">
                       {user.name} · {displayPhone(player.phone || user.phone)} ·{" "}
                       {NIVEAUX[player.level] ?? player.level} · {user.points} pts
+                      {user.sexe ? ` · ${user.sexe === "femme" ? "Femme" : "Homme"}` : " · sexe non indiqué"}
                     </span>
                     {player.note ? (
                       <span className="text-[11.5px] text-dim text-pretty">{player.note}</span>

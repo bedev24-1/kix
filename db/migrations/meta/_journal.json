@@ -344,6 +344,13 @@
       "when": 1790410000000,
       "tag": "0048_arbitres-duels",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1790415000000,
+      "tag": "0049_sexe-places-resume",
+      "breakpoints": true
     }
   ]
 }

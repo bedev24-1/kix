@@ -3,8 +3,8 @@ import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { heureDebut, periode } from "@/lib/periode";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db, events } from "@/db";
+import { and, eq, sql } from "drizzle-orm";
+import { db, events, tournamentPlayers, users } from "@/db";
 import { Photo } from "@/components/ui/Photo";
 import { getTournament } from "@/lib/tournaments";
 import { CATEGORIES, DISCIPLINES, FORMATS } from "@/lib/tournois";
@@ -27,7 +27,9 @@ async function charger(slug: string) {
 
 function resume(t: NonNullable<Awaited<ReturnType<typeof charger>>>["t"]) {
   return [
-    `${DISCIPLINES[t.discipline] ?? t.discipline} · ${t.size} joueurs`,
+    t.category === "mixte" && (t.placesHommes || t.placesDames)
+      ? `${DISCIPLINES[t.discipline] ?? t.discipline} · ${t.placesHommes} hommes + ${t.placesDames} femmes`
+      : `${DISCIPLINES[t.discipline] ?? t.discipline} · ${t.size} joueurs`,
     t.category !== "open" ? CATEGORIES[t.category] : null,
     FORMATS[t.format] ?? null,
     t.prizePool > 0 ? `Dotation ${t.prizePool.toLocaleString("fr-FR")} F` : null,
@@ -56,6 +58,7 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
   if (!d) notFound();
   const { t, venue, jumeau } = d;
   const ouvert = t.status === "inscriptions";
+  const retenus = await retenusParSexe(t.id);
   const quand = t.startsAt
     ? `${periode(t.startsAt, t.endsAt, { jourSemaine: true })} · dès ${heureDebut(t.startsAt)}`
     : jumeau?.day || "Date à confirmer";
@@ -71,7 +74,7 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
             Tournoi {t.category !== "open" ? `· ${CATEGORIES[t.category]}` : ""}
           </span>
           <h1 className="text-[26px] leading-7 text-white">{t.title}</h1>
-          <p className="text-[13px] text-white/80">{resume(t)}</p>
+          {t.resumePosition === "haut" ? <p className="text-[13px] text-white/80">{resume(t)}</p> : null}
         </div>
       </div>
 
@@ -80,11 +83,18 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
         <Info quoi="Où" valeur={venue?.name || jumeau?.address || "À confirmer"} />
         <Info quoi="Inscription" valeur={t.entryFee > 0 ? `${t.entryFee.toLocaleString("fr-FR")} F` : "Gratuite"} />
         <Info quoi="Dotation" valeur={t.prizePool > 0 ? `${t.prizePool.toLocaleString("fr-FR")} F` : "—"} />
+        {t.category === "mixte" && (t.placesHommes || t.placesDames) ? (
+          <>
+            <Info quoi="Places hommes" valeur={`${retenus.homme} / ${t.placesHommes}`} />
+            <Info quoi="Places femmes" valeur={`${retenus.femme} / ${t.placesDames}`} />
+          </>
+        ) : null}
       </dl>
 
       {t.presentation ? (
         <p className="text-[14px] leading-6 whitespace-pre-line text-dim">{t.presentation}</p>
       ) : null}
+      {t.resumePosition === "bas" ? <p className="text-[13px] text-muted">{resume(t)}</p> : null}
       <Cagnottes cagnottes={t.cagnottes ?? []} partage={t.prizeSplit} />
       {t.rules ? (
         <details className="rounded-panel border border-line px-4 py-3">
@@ -131,4 +141,16 @@ function Info({ quoi, valeur }: { quoi: string; valeur: string }) {
       <dd className="font-semibold first-letter:uppercase">{valeur}</dd>
     </div>
   );
+}
+
+/** Les joueurs retenus de chaque sexe, pour les places d'un mixte. */
+async function retenusParSexe(tournamentId: string) {
+  const lignes = await db
+    .select({ sexe: users.sexe, n: sql<number>`count(*)::int` })
+    .from(tournamentPlayers)
+    .innerJoin(users, eq(users.id, tournamentPlayers.userId))
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")))
+    .groupBy(users.sexe);
+  const n = (s: string) => Number(lignes.find((l) => l.sexe === s)?.n ?? 0);
+  return { homme: n("homme"), femme: n("femme") };
 }

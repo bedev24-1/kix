@@ -69,6 +69,8 @@ export const users = mb.table(
     role: text("role").notNull().default("client"),
     points: integer("points").notNull().default(0),
     venueId: uuid("venue_id").references(() => venues.id),
+    /** homme | femme — nul tant que le joueur ne l'a pas dit. Sert aux tableaux hommes, dames et mixtes. */
+    sexe: text("sexe"),
     /** Fin de l'abonnement Master Break : donne accès aux directs « membres ». */
     memberUntil: timestamp("member_until", { withTimezone: true }),
     createdAt: createdAt(),
@@ -306,6 +308,11 @@ export const tournaments = mb.table("tournaments", {
   size: integer("size").notNull().default(16),
   /** open | hommes | dames | mixte | juniors | veterans — voir CATEGORIES. */
   category: text("category").notNull().default("open"),
+  /** Tableau mixte : les places réservées à chacun. 0 = pas de quota. */
+  placesHommes: integer("places_hommes").notNull().default(0),
+  placesDames: integer("places_dames").notNull().default(0),
+  /** Le résumé automatique (« 8-ball · 88 joueurs · … ») : haut | bas | masque. */
+  resumePosition: text("resume_position").notNull().default("haut"),
   /**
    * Le tableau principal de l'événement, pour un tableau ajouté (« 64 hommes
    * + 24 dames » : deux tableaux, une affiche). Il partage la billetterie du
