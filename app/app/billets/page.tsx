@@ -13,6 +13,13 @@ import { f } from "@/lib/format";
 
 export const metadata = { title: "Mes billets" };
 
+const ETIQUETTE: Record<string, string> = {
+  valid: "Valide",
+  guichet: "À régler à l'entrée",
+  used: "Utilisé",
+  pending: "Paiement en attente",
+};
+
 export default async function BilletsPage() {
   const user = await requireUser();
   const tickets = await getTickets(user.id);
@@ -54,11 +61,18 @@ export default async function BilletsPage() {
                 </span>
               </span>
               <Chip tone={ticket.status === "valid" || ticket.status === "guichet" ? "gold" : "neutral"}>
-                {ticket.status === "valid" ? "Valide" : ticket.status === "guichet" ? "À régler à l'entrée" : "Utilisé"}
+                {ETIQUETTE[ticket.status] ?? ticket.status}
               </Chip>
             </div>
           </div>
 
+          {ticket.status === "pending" ? (
+            // Pas de QR tant que l'argent n'est pas arrivé : il n'ouvrirait rien.
+            <p className="p-4 text-[12.5px] text-muted">
+              Paiement en cours de validation. Le billet et son QR apparaîtront ici dès la confirmation de
+              l&apos;opérateur.
+            </p>
+          ) : (
           <div className="flex items-center gap-4 p-4">
             <div className="rounded-card bg-white p-2">
               <QrCode
@@ -81,6 +95,7 @@ export default async function BilletsPage() {
               ) : null}
             </div>
           </div>
+          )}
         </Card>
       ))}
       </div>

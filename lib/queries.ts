@@ -163,7 +163,7 @@ export async function getActivity(userId: string, limit = 6): Promise<ActivityEn
       .select({ ticket: tickets, event: events })
       .from(tickets)
       .leftJoin(events, eq(tickets.eventId, events.id))
-      .where(eq(tickets.userId, userId))
+      .where(and(eq(tickets.userId, userId), inArray(tickets.status, ["valid", "used", "guichet"])))
       .orderBy(desc(tickets.createdAt))
       .limit(limit),
   ]);
@@ -243,11 +243,13 @@ export async function getOrders(userId: string) {
 }
 
 export async function getTickets(userId: string) {
+  // Une tentative de paiement échouée ou expirée n'est pas un billet : la
+  // montrer, c'était afficher au client un second billet « utilisé ».
   return db
     .select({ ticket: tickets, event: events })
     .from(tickets)
     .innerJoin(events, eq(tickets.eventId, events.id))
-    .where(eq(tickets.userId, userId))
+    .where(and(eq(tickets.userId, userId), inArray(tickets.status, ["valid", "used", "guichet", "pending"])))
     .orderBy(desc(tickets.createdAt));
 }
 
@@ -338,7 +340,7 @@ export async function getAdminStats() {
       db.select({ total: sum(purchases.amount) }).from(purchases).where(gte(purchases.createdAt, month)),
       db.select({ n: count() }).from(tokens).where(gte(tokens.createdAt, month)),
       db.select({ n: count(), total: sum(orders.total) }).from(orders).where(gte(orders.createdAt, month)),
-      db.select({ n: count() }).from(tickets),
+      db.select({ n: count() }).from(tickets).where(inArray(tickets.status, ["valid", "used"])),
       db.select({ n: count() }).from(users).where(eq(users.role, "client")),
       db.select({ n: count() }).from(tokens).where(eq(tokens.status, "active")),
     ]);
@@ -411,7 +413,9 @@ export async function getAllEvents() {
     .select({ event: events, venue: venues, sold: count(tickets.id) })
     .from(events)
     .leftJoin(venues, eq(events.venueId, venues.id))
-    .leftJoin(tickets, eq(tickets.eventId, events.id))
+    // Vendus = payés (valides ou déjà scannés), comme chez le gérant : les
+    // tentatives échouées et les places « à payer à l'entrée » n'en sont pas.
+    .leftJoin(tickets, and(eq(tickets.eventId, events.id), inArray(tickets.status, ["valid", "used"])))
     // Grouper par `events.id` suffit pour les colonnes d'`events` — Postgres
     // suit la dépendance fonctionnelle depuis une clé primaire. Elle ne
     // traverse pas la jointure : `venues` a besoin de sa propre clé, sans quoi

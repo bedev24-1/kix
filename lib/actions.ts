@@ -5,7 +5,7 @@ import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, ne, or, sql } from "drizzle-orm";
 import type { Match, User } from "@/db";
 import {
   db,
@@ -614,6 +614,27 @@ export async function buyTicket(
 
   if (!phone) return { ok: false, error: "Numéro Mobile Money requis" };
 
+  // Un paiement déjà en cours pour cette soirée : on le reprend au lieu d'en
+  // lancer un second. Un double appui, ou un retour sur la page pendant la
+  // validation, créait sinon deux billets — et pouvait débiter deux fois.
+  const enCours = (
+    await db
+      .select({ reference: payments.reference, amount: payments.amount })
+      .from(tickets)
+      .innerJoin(payments, eq(payments.reference, tickets.reference))
+      .where(
+        and(
+          eq(tickets.eventId, eventId),
+          eq(tickets.userId, user.id),
+          eq(tickets.status, "pending"),
+          eq(payments.status, "pending"),
+          gt(payments.expiresAt, new Date()),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (enCours) return { ok: true, free: false, reference: enCours.reference, amount: enCours.amount };
+
   await db.insert(tickets).values({ id: ticketId, eventId, userId: user.id, code, status: "pending" });
 
   const started = await startPayment({
@@ -626,7 +647,12 @@ export async function buyTicket(
     targetId: ticketId,
   });
 
-  if (!started.ok) return started;
+  if (!started.ok) {
+    // Refusé avant même d'atteindre l'opérateur (numéro invalide…) : le
+    // billet en attente ne doit pas traîner.
+    await db.update(tickets).set({ status: "failed" }).where(eq(tickets.id, ticketId));
+    return started;
+  }
 
   await db.update(tickets).set({ reference: started.reference }).where(eq(tickets.id, ticketId));
   return { ok: true, free: false, reference: started.reference, instruction: started.instruction, amount: event.price };
