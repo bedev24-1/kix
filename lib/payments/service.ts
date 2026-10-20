@@ -53,7 +53,8 @@ export type PaymentKind =
   | "course"
   | "tournoi"
   | "abonnement"
-  | "profil";
+  | "profil"
+  | "promotion";
 
 export type StartInput = {
   kind: PaymentKind;
@@ -188,6 +189,7 @@ async function fulfil(tx: Tx, payment: Payment) {
   if (payment.kind === "tournoi") return fulfilTournamentEntry(tx, payment);
   if (payment.kind === "abonnement") return fulfilMembership(tx, payment);
   if (payment.kind === "profil") return fulfilProfil(tx, payment);
+  if (payment.kind === "promotion") return fulfilPromotion(tx, payment);
 }
 
 async function fulfilPack(tx: Tx, payment: Payment) {
@@ -493,6 +495,22 @@ async function fulfilMembership(tx: Tx, payment: Payment) {
     `${plan?.name ?? `${abo.months} mois`} · ${fcfa(abo.price)} par ${methodLabel[payment.method as PaymentMethod]} · réf. ${shortRef(payment.reference)}. Tous les directs te sont ouverts.`,
     "reward",
     "/app/abonnement",
+    tx,
+  );
+}
+
+/** Promotion payée : elle entre dans la file de la vitrine, au premier créneau libre. */
+async function fulfilPromotion(tx: Tx, payment: Payment) {
+  const { programmer } = await import("@/lib/promotions");
+  const creneau = await programmer(tx, payment.targetId!, "paiement");
+  if (!creneau) return;
+  const jour = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Africa/Douala" });
+  await notify(
+    payment.userId,
+    "Promotion programmée",
+    `Du ${jour(creneau.debut)} au ${jour(creneau.fin)} · ${fcfa(payment.amount)} · réf. ${shortRef(payment.reference)}.`,
+    "reward",
+    "/gerant/evenements",
     tx,
   );
 }

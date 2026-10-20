@@ -105,15 +105,30 @@ export async function getDeclinaisons(): Promise<ProductVariant[]> {
     .orderBy(productVariants.sort, productVariants.name);
 }
 
-export async function getEvents(): Promise<EventRow[]> {
+export async function getEvents(): Promise<(EventRow & { sponsorise: boolean })[]> {
   // Les soirées passées restent à l'affiche — on y retrouve son billet, ses
   // photos, son classement — mais derrière celles qui arrivent.
-  return db
-    .select()
-    .from(events)
-    .where(eq(events.active, true))
-    // L'événement « à la une » d'abord, tant qu'il n'est pas terminé.
-    .orderBy(sql`${events.endedAt} is not null`, desc(events.featured), events.createdAt);
+  const [lignes, promus] = await Promise.all([
+    db
+      .select()
+      .from(events)
+      .where(eq(events.active, true))
+      // L'événement « à la une » d'abord, tant qu'il n'est pas terminé.
+      .orderBy(sql`${events.endedAt} is not null`, desc(events.featured), events.createdAt),
+    import("@/lib/promotions").then((m) => m.promotionsEnCours()),
+  ]);
+  // Les promotions payées passent devant : la une d'abord, puis les
+  // sponsorisés. Le reste garde son ordre.
+  const rang = (e: EventRow) => {
+    if (e.endedAt) return 3;
+    if (promus.une.includes(e.id)) return 0;
+    if (promus.sponsorises.has(e.id)) return 1;
+    return 2;
+  };
+  return lignes
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => rang(a.e) - rang(b.e) || a.i - b.i)
+    .map(({ e }) => ({ ...e, sponsorise: promus.une.includes(e.id) || promus.sponsorises.has(e.id) }));
 }
 
 export async function getEvent(slug: string) {

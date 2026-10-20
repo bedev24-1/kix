@@ -12,6 +12,9 @@ import { f, fcfa } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { PartageEvenement } from "@/components/tournoi/Partage";
 import { Drawer } from "@/components/admin/AdminUI";
+import { Promouvoir } from "@/components/gerant/Promouvoir";
+import { db, promotions, tarifsPromo } from "@/db";
+import { desc, eq } from "drizzle-orm";
 import { VitrineForm } from "@/components/admin/VitrineForm";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +43,10 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
     getTournoiDeLEvenement(event.id),
   ]);
   const terminee = soireeTerminee(event.endedAt);
+  const [tarifs, promos] = await Promise.all([
+    db.select().from(tarifsPromo).where(eq(tarifsPromo.actif, true)).orderBy(tarifsPromo.prix),
+    db.select().from(promotions).where(eq(promotions.eventId, event.id)).orderBy(desc(promotions.createdAt)),
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,6 +55,21 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
       </Link>
 
       <PartageEvenement titre={event.title} slug={event.slug} imprimable />
+
+      <Promouvoir
+        eventId={event.id}
+        phone={manager.phone}
+        tarifs={tarifs.map((t) => ({ formule: t.formule, nom: t.nom, prix: t.prix, jours: t.jours }))}
+        promos={promos.map((p) => ({
+          id: p.id,
+          formule: p.formule,
+          status: p.status,
+          prix: p.prix,
+          debut: p.debut?.toISOString() ?? null,
+          fin: p.fin?.toISOString() ?? null,
+          motif: p.motifRefus,
+        }))}
+      />
 
       <Drawer summary="Page publique : vidéo, galerie, artistes, musique">
         <div className="pt-3">

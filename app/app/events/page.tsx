@@ -40,6 +40,11 @@ export default async function EventsPage() {
                   Terminé
                 </Chip>
               ) : null}
+              {event.sponsorise ? (
+                <Chip tone="neutral" className="border-white/30 bg-black/55 px-2.5 py-1 text-[10px] tracking-[0.06em] text-white/85 uppercase">
+                  Sponsorisé
+                </Chip>
+              ) : null}
               {event.tags.split(",").filter(Boolean).map((tag) => (
                 <Chip key={tag} tone="gold" className="px-2.5 py-1 text-[10px] tracking-[0.06em] uppercase">
                   {tag}

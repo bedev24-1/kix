@@ -92,6 +92,11 @@ export default async function AccueilPage() {
                 <span className="rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[10px] font-medium">
                   {featured.day}
                 </span>
+                {featured.sponsorise ? (
+                  <span className="rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[10px] font-medium text-white/80">
+                    Sponsorisé
+                  </span>
+                ) : null}
               </div>
               <h2 className="text-[22px] leading-6 text-white lg:text-[40px] lg:leading-10">
                 {featured.title}

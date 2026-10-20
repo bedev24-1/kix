@@ -471,6 +471,49 @@ export const popups = mb.table(
   (t) => [index("popups_fenetre_idx").on(t.actif, t.debut, t.fin)],
 );
 
+/** Les formules de promotion, et leurs prix : modifiables par l'administration. */
+export const tarifsPromo = mb.table("tarifs_promo", {
+  // sponsorise | une | popup | notification | pack
+  formule: text("formule").primaryKey(),
+  nom: text("nom").notNull(),
+  prix: integer("prix").notNull(),
+  jours: integer("jours").notNull(),
+  actif: boolean("actif").notNull().default(true),
+});
+
+/**
+ * La promotion d'un événement par son gérant.
+ *
+ * demande → valide (l'administration a vu le contenu, le gérant peut payer)
+ * → payee (programmée dans la file de la vitrine : debut/fin) ; ou refusee.
+ * Une promotion offerte par l'administration passe directement à payee.
+ */
+export const promotions = mb.table(
+  "promotions",
+  {
+    id: id(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    demandeurId: uuid("demandeur_id").references(() => users.id, { onDelete: "set null" }),
+    formule: text("formule").notNull(),
+    prix: integer("prix").notNull(),
+    jours: integer("jours").notNull(),
+    status: text("status").notNull().default("demande"),
+    source: text("source").notNull().default("paiement"),
+    debutSouhaite: timestamp("debut_souhaite", { withTimezone: true }),
+    debut: timestamp("debut", { withTimezone: true }),
+    fin: timestamp("fin", { withTimezone: true }),
+    popupId: uuid("popup_id").references(() => popups.id, { onDelete: "set null" }),
+    notifEnvoyee: boolean("notif_envoyee").notNull().default(false),
+    rappelEnvoye: boolean("rappel_envoye").notNull().default(false),
+    motifRefus: text("motif_refus").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("promotions_fenetre_idx").on(t.status, t.debut, t.fin)],
+);
+
 /** Un duel du tableau. */
 export const tournamentMatches = mb.table(
   "tournament_matches",
