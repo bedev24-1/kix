@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { Vitrine } from "../lib/vitrine";
 import {
   type AnyPgColumn,
   boolean,
@@ -510,6 +511,8 @@ export const events = mb.table("events", {
    * du tournoi jumeau, referme l'affiche sans la faire disparaître.
    */
   endedAt: timestamp("ended_at", { withTimezone: true }),
+  /** La page publique : vidéo, galerie, artistes, musique — voir `lib/vitrine.ts`. */
+  vitrine: jsonb("vitrine").$type<Vitrine>().notNull().default({}),
   createdAt: createdAt(),
 });
 

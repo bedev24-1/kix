@@ -11,6 +11,8 @@ import { displayPhone } from "@/lib/phone";
 import { f, fcfa } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { PartageEvenement } from "@/components/tournoi/Partage";
+import { Drawer } from "@/components/admin/AdminUI";
+import { VitrineForm } from "@/components/admin/VitrineForm";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,12 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
       </Link>
 
       <PartageEvenement titre={event.title} slug={event.slug} imprimable />
+
+      <Drawer summary="Page publique : vidéo, galerie, artistes, musique">
+        <div className="pt-3">
+          <VitrineForm id={event.id} slug={event.slug} vitrine={event.vitrine ?? {}} />
+        </div>
+      </Drawer>
 
       <div className="flex gap-3.5">
         <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-panel">

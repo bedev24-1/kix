@@ -5,6 +5,7 @@ import { etatSoiree, ETATS_SOIREE, soireeTerminee } from "@/lib/soirees";
 import { getAllEvents, getAllVenues } from "@/lib/queries";
 import { f } from "@/lib/format";
 import { PartageEvenement } from "@/components/tournoi/Partage";
+import { VitrineForm } from "@/components/admin/VitrineForm";
 
 export const metadata = { title: "Événements" };
 
@@ -90,6 +91,14 @@ export default async function AdminEvents() {
                     <input type="hidden" name="active" value="on" />
                     <SubmitButton />
                   </form>
+                </details>
+                <details className="relative">
+                  <summary className="cursor-pointer rounded-full border border-line px-3 py-1.5 text-[11px] marker:hidden">
+                    Page publique
+                  </summary>
+                  <div className="absolute right-0 z-10 mt-2 max-h-[80vh] w-[min(32rem,90vw)] overflow-y-auto border border-line bg-bg p-4 shadow-[var(--mb-shadow)]">
+                    <VitrineForm id={event.id} slug={event.slug} vitrine={event.vitrine ?? {}} />
+                  </div>
                 </details>
                 <details className="relative">
                   <summary className="cursor-pointer rounded-full border border-line px-3 py-1.5 text-[11px] marker:hidden">
