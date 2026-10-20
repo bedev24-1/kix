@@ -27,7 +27,7 @@ import {
 } from "@/db";
 import { freshCode, notify, uid, type Executor } from "@/lib/domain";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
-import { paymentProvider } from ".";
+import { paymentProvider, providerNamed } from ".";
 import { shortRef } from "./pawapay";
 import { methodLabel, type Outcome, type PaymentMethod, type PaymentStatus } from "./types";
 
@@ -100,7 +100,7 @@ export async function startPayment(input: StartInput): Promise<StartResult> {
     phone,
     method: input.method,
     description: input.description,
-    callbackUrl: callbackUrl(),
+    callbackUrl: callbackUrl(provider.name),
   });
 
   if (!charge.ok) {
@@ -127,9 +127,10 @@ export async function startPayment(input: StartInput): Promise<StartResult> {
   };
 }
 
-function callbackUrl(): string | undefined {
+/** Où l'encaisseur doit nous prévenir : une route par encaisseur. */
+function callbackUrl(provider: string): string | undefined {
   const base = process.env.MB_PUBLIC_URL?.trim().replace(/\/+$/, "");
-  return base ? `${base}/api/webhooks/powerpay` : undefined;
+  return base ? `${base}/api/webhooks/${provider}` : undefined;
 }
 
 /**
@@ -569,7 +570,7 @@ export async function refreshPayment(reference: string, userId: string): Promise
     return expired ? view(expired) : null;
   }
 
-  const result = await paymentProvider().verify({
+  const result = await providerNamed(current.provider).verify({
     reference: current.reference,
     providerRef: current.providerRef,
     phone: current.phone,
@@ -596,7 +597,7 @@ export async function confirmFromProvider(reference: string): Promise<Payment | 
   if (!current) return null;
   if (current.status !== "pending") return current;
 
-  const result = await paymentProvider().verify({
+  const result = await providerNamed(current.provider).verify({
     reference: current.reference,
     providerRef: current.providerRef,
     phone: current.phone,
