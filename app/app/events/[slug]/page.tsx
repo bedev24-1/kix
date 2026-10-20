@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { TicketButton } from "@/components/mb/TicketButton";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
-import { BookmarkIcon, CalendarIcon, ChevronLeftIcon, PinIcon, ShareIcon } from "@/components/icons";
+import { BookmarkIcon, CalendarIcon, ChevronLeftIcon, PinIcon } from "@/components/icons";
+import { PartagerBouton } from "@/components/mb/PartagerBouton";
 import { getEvent, getTickets, getVenues } from "@/lib/queries";
 import { soireeTerminee } from "@/lib/soirees";
 import { requireUser } from "@/lib/session";
@@ -41,12 +42,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             <ChevronLeftIcon size={18} />
           </Link>
           <div className="flex gap-2.5">
-            <button
-              aria-label="Partager"
+            <PartagerBouton
+              chemin={`/app/events/${event.slug}`}
+              titre={event.title}
               className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur"
-            >
-              <ShareIcon size={17} />
-            </button>
+            />
             <button
               aria-label="Enregistrer"
               className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-gold backdrop-blur"

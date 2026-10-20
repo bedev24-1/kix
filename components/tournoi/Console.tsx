@@ -127,7 +127,7 @@ export async function ConsoleTournoi({
         />
       </header>
 
-      <PartageTournoi titre={tournoi.title} slug={tournoi.slug} eventSlug={jumeau[0]?.slug ?? null} />
+      <PartageTournoi titre={tournoi.title} slug={tournoi.slug} eventSlug={jumeau[0]?.slug ?? null} imprimable />
 
       <div className="grid grid-cols-3 gap-2.5">
         <Chiffre valeur={String(candidats.length)} quoi="en attente" />

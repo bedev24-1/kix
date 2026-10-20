@@ -10,6 +10,7 @@ import { requireRole } from "@/lib/session";
 import { displayPhone } from "@/lib/phone";
 import { f, fcfa } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { PartageEvenement } from "@/components/tournoi/Partage";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ const ETAT: Record<string, { label: string; ton: string }> = {
   used: { label: "entré", ton: "border-jade/40 bg-jade/12 text-jade-text" },
   pending: { label: "en attente", ton: "border-warn/40 bg-warn/12 text-warn" },
   failed: { label: "échoué", ton: "border-line bg-surface-2 text-muted" },
+  guichet: { label: "paiera à l'entrée", ton: "border-gold/40 bg-gold/12 text-gold-text" },
 };
 
 export default async function GerantEvenement({ params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +44,8 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
       <Link href="/gerant/evenements" className="press flex w-fit items-center gap-1.5 text-[13px] text-muted hover:text-ink">
         <ChevronLeftIcon size={15} /> Les événements
       </Link>
+
+      <PartageEvenement titre={event.title} slug={event.slug} imprimable />
 
       <div className="flex gap-3.5">
         <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-panel">
