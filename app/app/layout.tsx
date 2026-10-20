@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/mb/AppSidebar";
 import { BottomNav } from "@/components/mb/BottomNav";
+import { PopupPromo } from "@/components/mb/PopupPromo";
 import { getBalance, getUnreadCount } from "@/lib/queries";
 import { requireUser } from "@/lib/session";
 
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
 
       <BottomNav />
+      <PopupPromo page="app" />
     </div>
   );
 }

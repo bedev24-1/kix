@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
+import { PopupPromo } from "@/components/mb/PopupPromo";
 import { DotGrid } from "@/components/site/DotGrid";
 import { Marquee } from "@/components/site/Marquee";
 import { SiteNav } from "@/components/site/SiteNav";
@@ -325,6 +326,7 @@ export default async function LandingPage() {
           </div>
         </div>
       </footer>
+      <PopupPromo page="site" />
     </div>
   );
 }

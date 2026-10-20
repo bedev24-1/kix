@@ -435,6 +435,42 @@ export const profilsSpeciaux = mb.table(
   (t) => [uniqueIndex("profils_speciaux_user_type_idx").on(t.userId, t.type)],
 );
 
+/**
+ * Les pop-ups promotionnels.
+ *
+ * Contrôlés : créés par l'administration (ou issus d'une promotion payée et
+ * validée), bornés dans le temps, avec un plafond de vues par joueur et par
+ * jour. Un seul s'affiche par visite.
+ */
+export const popups = mb.table(
+  "popups",
+  {
+    id: id(),
+    titre: text("titre").notNull(),
+    texte: text("texte").notNull().default(""),
+    image: text("image").notNull().default(""),
+    bouton1Label: text("bouton1_label").notNull().default(""),
+    bouton1Url: text("bouton1_url").notNull().default(""),
+    bouton2Label: text("bouton2_label").notNull().default(""),
+    bouton2Url: text("bouton2_url").notNull().default(""),
+    /** Où il s'affiche : app | site | tous. */
+    pages: text("pages").notNull().default("tous"),
+    /** Combien de fois au plus un même joueur le voit dans une journée. */
+    parJour: integer("par_jour").notNull().default(1),
+    debut: timestamp("debut", { withTimezone: true }).notNull().defaultNow(),
+    fin: timestamp("fin", { withTimezone: true }).notNull(),
+    actif: boolean("actif").notNull().default(true),
+    /** Le plus haut passe d'abord quand plusieurs se chevauchent. */
+    priorite: integer("priorite").notNull().default(0),
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+    vues: integer("vues").notNull().default(0),
+    clics: integer("clics").notNull().default(0),
+    fermetures: integer("fermetures").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("popups_fenetre_idx").on(t.actif, t.debut, t.fin)],
+);
+
 /** Un duel du tableau. */
 export const tournamentMatches = mb.table(
   "tournament_matches",

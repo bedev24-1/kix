@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PopupPromo } from "@/components/mb/PopupPromo";
 import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { heureDebut, periode } from "@/lib/periode";
@@ -130,6 +131,7 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
 
       {/* Le tournoi en direct : groupes, arbre, arbitres — sans compte. */}
       <TableauEnDirect t={t} base="/t" />
+      <PopupPromo page="site" />
     </main>
   );
 }

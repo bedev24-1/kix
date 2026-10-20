@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
+import { PopupPromo } from "@/components/mb/PopupPromo";
 import { notFound } from "next/navigation";
 import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { db, events, venues } from "@/db";
@@ -219,6 +220,7 @@ export default async function SoireePublique({ params }: { params: Promise<{ slu
           </Link>
         </div>
       </footer>
+      <PopupPromo page="site" />
     </main>
   );
 }
