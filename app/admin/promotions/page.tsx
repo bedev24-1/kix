@@ -78,7 +78,7 @@ export default async function AdminPromotions() {
               <Td className="text-muted">{jour(promo.debutSouhaite)}</Td>
               <Td className="text-muted">{gerant ?? "—"}</Td>
               <Td>
-                <DecisionsPromo id={promo.id} />
+                <DecisionsPromo id={promo.id} avecPopup={promo.formule === "popup" || promo.formule === "pack"} />
               </Td>
             </tr>
           ))}

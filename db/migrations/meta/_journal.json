@@ -386,6 +386,13 @@
       "when": 1790440000000,
       "tag": "0054_promotions",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1790445000000,
+      "tag": "0055_modeles-popup",
+      "breakpoints": true
     }
   ]
 }

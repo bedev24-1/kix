@@ -14,6 +14,10 @@ export async function GET(request: Request) {
     .select({
       id: popups.id,
       titre: popups.titre,
+      modele: popups.modele,
+      etiquette: popups.etiquette,
+      surtitre: popups.surtitre,
+      accroche: popups.accroche,
       texte: popups.texte,
       image: popups.image,
       bouton1Label: popups.bouton1Label,

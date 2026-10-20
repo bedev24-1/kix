@@ -30,6 +30,35 @@ export function NouveauPopup() {
       }
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
     >
+      {/* Le modèle se valide avec le pop-up : Cinéma (plein écran, titre géant)
+          ou Néon (cadre doré, grand chiffre en contour). */}
+      <fieldset className="grid gap-2 sm:grid-cols-2 lg:col-span-4">
+        <legend className={`${libelle} pb-1.5`}>Modèle</legend>
+        {[
+          ["cinema", "Cinéma", "Plein écran bord à bord, titre géant centré, boutons côte à côte."],
+          ["neon", "Néon", "Carte cadrée d'or lumineux, grand chiffre en contour (« -20 % »)."],
+        ].map(([v, nom, aide]) => (
+          <label key={v} className="flex cursor-pointer items-start gap-2.5 border border-line p-3 has-checked:border-gold has-checked:bg-gold/10">
+            <input type="radio" name="modele" value={v} defaultChecked={v === "cinema"} className="mt-1" />
+            <span className="flex flex-col">
+              <span className="text-[13px] font-semibold">{nom}</span>
+              <span className="text-[11.5px] text-muted">{aide}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <label className="flex flex-col gap-1.5">
+        <span className={libelle}>Étiquette</span>
+        <input name="etiquette" maxLength={30} placeholder="Sponsorisé, Ce week-end…" className={champ} />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className={libelle}>Ligne dorée (date, lieu)</span>
+        <input name="surtitre" maxLength={60} placeholder="7 · 8 novembre · Le Break Akwa" className={champ} />
+      </label>
+      <label className="flex flex-col gap-1.5 lg:col-span-2">
+        <span className={libelle}>Grand texte (modèle Néon)</span>
+        <input name="accroche" maxLength={14} placeholder="-20 %" className={champ} />
+      </label>
       <label className="flex flex-col gap-1.5 lg:col-span-2">
         <span className={libelle}>Titre</span>
         <input name="titre" required maxLength={80} placeholder="Tournoi Madiba : -20 % ce week-end" className={champ} />

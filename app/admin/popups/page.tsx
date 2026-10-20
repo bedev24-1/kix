@@ -25,7 +25,7 @@ export default async function AdminPopups() {
         <NouveauPopup />
       </section>
 
-      <Table head={["Pop-up", "Période", "Par jour", "Où", "Vues", "Clics", "Fermés", "État", ""]}>
+      <Table head={["Pop-up", "Modèle", "Période", "Par jour", "Où", "Vues", "Clics", "Fermés", "État", ""]}>
         {lignes.map((p) => (
           <tr key={p.id}>
             <Td>
@@ -34,6 +34,7 @@ export default async function AdminPopups() {
                 <span className="max-w-xs truncate text-[11px] text-muted">{p.texte}</span>
               </span>
             </Td>
+            <Td>{p.modele === "neon" ? "Néon" : "Cinéma"}</Td>
             <Td className="text-[12px] text-muted">
               {quand(p.debut)} → {quand(p.fin)}
             </Td>

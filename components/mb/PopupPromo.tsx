@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Photo } from "@/components/ui/Photo";
+import { cn } from "@/lib/cn";
 
 type Popup = {
   id: string;
   titre: string;
+  modele: string;
+  etiquette: string;
+  surtitre: string;
+  accroche: string;
   texte: string;
   image: string;
   bouton1Label: string;
@@ -71,44 +76,88 @@ export function PopupPromo({ page }: { page: "app" | "site" }) {
     { label: popup.bouton1Label, url: popup.bouton1Url, principal: true },
     { label: popup.bouton2Label, url: popup.bouton2Url, principal: false },
   ].filter((b) => b.label && b.url);
+  const neon = popup.modele === "neon";
+
+  // Boutons : fond transparent, bordure et texte visibles — doré pour
+  // l'action principale, blanc pour l'autre.
+  const cta = (b: (typeof boutons)[number]) => (
+    <Link
+      key={b.label}
+      href={b.url}
+      onClick={() => {
+        stat(popup.id, "clic");
+        setPopup(null);
+      }}
+      className={cn(
+        "press flex h-[50px] items-center justify-center rounded-full border-[1.5px] bg-transparent px-4 text-[14.5px] font-semibold transition hover:bg-white/10",
+        b.principal ? "border-[#e8c86a] text-[#e8c86a]" : "border-white/85 text-white",
+        neon && b.principal && "shadow-[0_0_18px_rgba(232,200,106,.35),inset_0_0_12px_rgba(232,200,106,.12)]",
+      )}
+    >
+      {b.label}
+    </Link>
+  );
+  const etiquette = popup.etiquette ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-black/25 px-3 py-1.5 text-[10.5px] font-semibold tracking-[0.1em] uppercase backdrop-blur">
+      <i className="h-1.5 w-1.5 rounded-full bg-[#e8c86a]" />
+      {popup.etiquette}
+    </span>
+  ) : null;
+  const croix = (
+    <button
+      onClick={fermer}
+      aria-label="Fermer"
+      className="absolute top-3.5 right-3.5 z-10 grid h-[38px] w-[38px] place-items-center rounded-full border border-white/45 bg-black/35 text-[20px] leading-none text-white backdrop-blur"
+    >
+      ×
+    </button>
+  );
+  const fond = popup.image ? <Photo src={popup.image} alt="" fill sizes="(max-width: 640px) 100vw, 480px" className="object-cover" priority /> : null;
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-5 backdrop-blur-sm" onClick={fermer} role="dialog" aria-modal="true" aria-label={popup.titre}>
-      <div className="relative w-full max-w-sm overflow-hidden rounded-panel border border-line bg-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={fermer} aria-label="Fermer" className="absolute top-2.5 right-2.5 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-[18px] text-white">
-          ×
-        </button>
-        {popup.image ? (
-          <div className="relative aspect-[4/3] w-full">
-            <Photo src={popup.image} alt="" fill sizes="384px" className="object-cover" />
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm" onClick={fermer} role="dialog" aria-modal="true" aria-label={popup.titre}>
+      {neon ? (
+        // Néon : une carte cadrée d'or, le grand chiffre en contour lumineux.
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute inset-x-[18px] inset-y-[26px] mx-auto max-w-md overflow-hidden rounded-[28px] border-[1.5px] border-[#e8c86a]/90 bg-[#071a13] text-white shadow-[0_0_0_4px_rgba(232,200,106,.12),0_0_40px_rgba(232,200,106,.35),0_30px_80px_rgba(0,0,0,.7)]"
+        >
+          {fond}
+          <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/20 to-black/90" />
+          {croix}
+          <div className="absolute inset-x-[22px] bottom-[26px] flex flex-col items-center gap-3 text-center">
+            {etiquette}
+            {popup.accroche ? (
+              <span className="text-[64px] leading-[0.9] font-extrabold text-transparent [-webkit-text-stroke:1.5px_#e8c86a] [text-shadow:0_0_24px_rgba(232,200,106,.45)]">
+                {popup.accroche}
+              </span>
+            ) : null}
+            <h2 className="text-[24px] leading-[1.1] font-extrabold tracking-[0.02em] uppercase">{popup.titre}</h2>
+            {popup.surtitre ? <p className="text-[13px] text-white/80">{popup.surtitre}</p> : null}
+            {popup.texte ? <p className="text-[13px] leading-5 text-white/75">{popup.texte}</p> : null}
+            {boutons.length ? <div className="mt-1 flex w-full flex-col gap-2.5">{boutons.map(cta)}</div> : null}
           </div>
-        ) : null}
-        <div className="flex flex-col gap-3 p-5">
-          <h2 className="text-[20px] leading-tight font-bold">{popup.titre}</h2>
-          {popup.texte ? <p className="text-[13.5px] leading-6 whitespace-pre-line text-dim">{popup.texte}</p> : null}
-          {boutons.length ? (
-            <div className="flex flex-col gap-2 pt-1">
-              {boutons.map((b) => (
-                <Link
-                  key={b.label}
-                  href={b.url}
-                  onClick={() => {
-                    stat(popup.id, "clic");
-                    setPopup(null);
-                  }}
-                  className={
-                    b.principal
-                      ? "press flex h-12 items-center justify-center rounded-full bg-gold text-[14px] font-semibold text-gold-ink"
-                      : "press flex h-12 items-center justify-center rounded-full border border-line text-[14px] font-semibold"
-                  }
-                >
-                  {b.label}
-                </Link>
-              ))}
-            </div>
-          ) : null}
         </div>
-      </div>
+      ) : (
+        // Cinéma : bord à bord, le titre géant au centre bas.
+        <div onClick={(e) => e.stopPropagation()} className="absolute inset-0 mx-auto max-w-xl overflow-hidden bg-[#071a13] text-white sm:inset-y-6 sm:rounded-[28px]">
+          {fond}
+          <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_35%,rgba(0,0,0,0)_0%,rgba(0,0,0,.55)_60%,rgba(0,0,0,.92)_100%)]" />
+          {croix}
+          <div className="absolute inset-0 flex flex-col items-center justify-end gap-3.5 px-7 pb-11 text-center">
+            {etiquette}
+            {popup.surtitre ? (
+              <span className="text-[12px] font-semibold tracking-[0.3em] text-[#e8c86a] uppercase">{popup.surtitre}</span>
+            ) : null}
+            <h2 className="text-[44px] leading-[0.95] font-extrabold tracking-[-0.04em] uppercase">{popup.titre}</h2>
+            {popup.texte ? <p className="max-w-[300px] text-[14px] leading-6 text-white/80">{popup.texte}</p> : null}
+            {boutons.length ? (
+              <div className={cn("mt-2 grid w-full gap-2.5", boutons.length > 1 ? "grid-cols-2" : "grid-cols-1")}>{boutons.map(cta)}</div>
+            ) : null}
+            <span className="mt-2.5 h-1 w-[42px] rounded-full bg-white/50" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

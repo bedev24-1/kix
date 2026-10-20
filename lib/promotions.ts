@@ -66,7 +66,11 @@ export async function programmer(exec: Executor, promoId: string, source: "paiem
       await exec.insert(popups).values({
         id: popupId,
         titre: e.title,
-        texte: [e.subtitle, [e.day, e.hours].filter(Boolean).join(" · ")].filter(Boolean).join("\n"),
+        texte: e.subtitle,
+        modele: p.modelePopup,
+        etiquette: "Sponsorisé",
+        surtitre: [e.day, e.hours].filter(Boolean).join(" · "),
+        accroche: e.price > 0 ? `${e.price.toLocaleString("fr-FR")} F` : "Entrée libre",
         image: e.image,
         bouton1Label: e.price > 0 ? "Prendre ma place" : "Réserver ma place",
         bouton1Url: `/e/${e.slug}`,

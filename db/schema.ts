@@ -446,6 +446,14 @@ export const popups = mb.table(
   "popups",
   {
     id: id(),
+    /** Le modèle validé : cinema (plein écran, titre géant) | neon (cadre doré, grand chiffre). */
+    modele: text("modele").notNull().default("cinema"),
+    /** La pastille du haut : « Sponsorisé », « Ce week-end ». */
+    etiquette: text("etiquette").notNull().default(""),
+    /** La ligne dorée : date, lieu. */
+    surtitre: text("surtitre").notNull().default(""),
+    /** Le grand texte du modèle néon : « -20 % », « 500 000 F ». */
+    accroche: text("accroche").notNull().default(""),
     titre: text("titre").notNull(),
     texte: text("texte").notNull().default(""),
     image: text("image").notNull().default(""),
@@ -505,6 +513,8 @@ export const promotions = mb.table(
     debut: timestamp("debut", { withTimezone: true }),
     fin: timestamp("fin", { withTimezone: true }),
     popupId: uuid("popup_id").references(() => popups.id, { onDelete: "set null" }),
+    /** Le modèle de pop-up choisi par l'administration en validant. */
+    modelePopup: text("modele_popup").notNull().default("cinema"),
     notifEnvoyee: boolean("notif_envoyee").notNull().default(false),
     rappelEnvoye: boolean("rappel_envoye").notNull().default(false),
     motifRefus: text("motif_refus").notNull().default(""),

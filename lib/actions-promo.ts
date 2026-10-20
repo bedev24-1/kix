@@ -29,6 +29,10 @@ export async function creerPopup(formData: FormData) {
     titre,
     texte: texte(formData, "texte", 400),
     image: texte(formData, "image", 600),
+    modele: texte(formData, "modele") === "neon" ? "neon" : "cinema",
+    etiquette: texte(formData, "etiquette", 30),
+    surtitre: texte(formData, "surtitre", 60),
+    accroche: texte(formData, "accroche", 14),
     bouton1Label: texte(formData, "bouton1Label", 40),
     bouton1Url: lien(texte(formData, "bouton1Url", 400)),
     bouton2Label: texte(formData, "bouton2Label", 40),
@@ -105,10 +109,12 @@ export async function payerPromotion(promoId: string, method: PaymentMethod, pho
 }
 
 /** L'administration : valider (le gérant paie), offrir (programmée sans paiement) ou refuser. */
-export async function deciderPromotion(id: string, decision: "valide" | "offerte" | "refusee", motif = "") {
+export async function deciderPromotion(id: string, decision: "valide" | "offerte" | "refusee", motif = "", modele = "cinema") {
   await requireRole("admin");
   const p = (await db.select().from(promotions).where(eq(promotions.id, id)).limit(1))[0];
   if (!p) return { ok: false as const, error: "Promotion introuvable." };
+  // Valider le pop-up, c'est aussi valider son modèle.
+  await db.update(promotions).set({ modelePopup: modele === "neon" ? "neon" : "cinema" }).where(eq(promotions.id, id));
   const e = (await db.select().from(events).where(eq(events.id, p.eventId)).limit(1))[0];
   let detail = "";
   if (decision === "offerte") {
