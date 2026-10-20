@@ -48,15 +48,20 @@ export async function PartageTournoi({
   ];
 
   return (
-    <Card shape="panel" className="flex flex-col gap-3 p-4">
+    <Card shape="panel" className="flex min-w-0 flex-col gap-3 p-4">
       <h2 className="text-[15px] font-semibold">Partager le tournoi</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* `minmax(0,1fr)` : sans lui, une colonne de grille prend la largeur de
+          son contenu, et le lien entier poussait la carte hors de l'écran. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         {portes.map((p) => (
-          <div key={p.quoi} className="flex items-center gap-3.5 rounded-panel border border-line p-3">
+          <div
+            key={p.quoi}
+            className="flex min-w-0 flex-col items-start gap-3 rounded-panel border border-line p-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3.5"
+          >
             <div className="shrink-0 rounded-card bg-white p-1.5">
               <QrCode shape={qrShape(p.url)} size={96} />
             </div>
-            <div className="flex min-w-0 grow flex-col gap-1.5">
+            <div className="flex w-full min-w-0 grow flex-col gap-1.5">
               <span className="text-[13.5px] font-semibold">{p.quoi}</span>
               <span className="text-[11.5px] text-muted">{p.aide}</span>
               <span className="truncate text-[11px] text-faint">{p.url}</span>
@@ -81,11 +86,14 @@ export async function PartageEvenement({
 }) {
   const url = `${await urlPublique()}/e/${slug}`;
   return (
-    <Card shape="panel" className="flex items-center gap-3.5 p-3.5">
+    <Card
+      shape="panel"
+      className="flex min-w-0 flex-col items-start gap-3 p-3.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3.5"
+    >
       <div className="shrink-0 rounded-card bg-white p-1.5">
         <QrCode shape={qrShape(url)} size={96} />
       </div>
-      <div className="flex min-w-0 grow flex-col gap-1.5">
+      <div className="flex w-full min-w-0 grow flex-col gap-1.5">
         <span className="text-[13.5px] font-semibold">Partager la soirée</span>
         <span className="text-[11.5px] text-muted">Billet en ligne ou à l&apos;entrée</span>
         <span className="truncate text-[11px] text-faint">{url}</span>
