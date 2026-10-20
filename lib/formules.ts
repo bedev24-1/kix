@@ -114,4 +114,4 @@ export const FORMULES: Formule[] = [
 ];
 
 /** Les champs qu'une formule ne touche jamais. */
-export const CHAMPS_LIBRES = ["title", "entryFee", "startsAt", "closesAt", "venueId", "image"];
+export const CHAMPS_LIBRES = ["title", "entryFee", "startsAt", "endsAt", "closesAt", "venueId", "image"];

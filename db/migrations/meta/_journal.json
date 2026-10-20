@@ -330,6 +330,13 @@
       "when": 1790400000000,
       "tag": "0046_cagnottes-presentation",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790405000000,
+      "tag": "0047_fin-tournoi",
+      "breakpoints": true
     }
   ]
 }

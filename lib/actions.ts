@@ -1,5 +1,6 @@
 "use server";
 
+import { periode } from "@/lib/periode";
 import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -727,7 +728,11 @@ const bool = (fd: FormData, key: string) => fd.get(key) === "on" || fd.get(key) 
 const date = (fd: FormData, key: string) => {
   const brut = String(fd.get(key) ?? "").trim();
   if (!brut) return null;
-  const d = new Date(brut);
+  // Un champ `datetime-local` n'a pas de fuseau : c'est l'heure de Douala
+  // qu'on y tape. Lue telle quelle, elle passait pour de l'UTC — une heure
+  // de décalage, et un « 23:00 » qui glissait au lendemain.
+  const sansFuseau = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(brut);
+  const d = new Date(sansFuseau ? `${brut}+01:00` : brut);
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
@@ -2353,6 +2358,7 @@ export async function saveTournament(formData: FormData) {
   const slug = str(formData, "slug") || slugify(title);
   const startsAt = date(formData, "startsAt");
   const closesAt = date(formData, "closesAt");
+  const endsAt = date(formData, "endsAt");
   const image = str(formData, "image") || "/img/table-rack.jpg";
   const cagnottes = lireCagnottes(formData);
 
@@ -2383,6 +2389,8 @@ export async function saveTournament(formData: FormData) {
     rules: str(formData, "rules"),
     image,
     startsAt,
+    // Une fin avant le début est une faute de frappe : on l'ignore.
+    endsAt: endsAt && startsAt && endsAt < startsAt ? null : endsAt,
     closesAt,
   };
 
@@ -2448,9 +2456,8 @@ async function syncTwinEvent(tournamentId: string, formData: FormData) {
 
   const prix = Math.max(0, num(formData, "ticketPrice"));
   const places = Math.max(1, num(formData, "ticketCapacity") || 100);
-  const jour = t.startsAt
-    ? t.startsAt.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
-    : "Date à confirmer";
+  // « du samedi 7 au dimanche 8 novembre » : l'affiche dit toute la période.
+  const jour = periode(t.startsAt, t.endsAt, { jourSemaine: true });
   const heures = str(formData, "hours");
 
   const commun = {

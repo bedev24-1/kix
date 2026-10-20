@@ -1,4 +1,5 @@
 import "server-only";
+import { periode } from "@/lib/periode";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   db,
@@ -177,11 +178,7 @@ export function tourEnCours(duels: TournamentMatch[]): number {
 
 /** « du 12 au 14 octobre », ou la seule date quand tout tient en un jour. */
 export function duree(t: Tournament): string {
-  const jour = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  if (!t.startsAt) return "Dates à confirmer";
-  if (!t.closesAt) return jour(t.startsAt);
-  const debut = new Date(t.closesAt) < new Date(t.startsAt) ? t.startsAt : t.closesAt;
-  return jour(debut) === jour(t.startsAt) ? jour(t.startsAt) : `du ${jour(t.startsAt)} au ${jour(debut)}`;
+  return periode(t.startsAt, t.endsAt);
 }
 
 export { inArray };

@@ -338,6 +338,8 @@ export const tournaments = mb.table("tournaments", {
   /** brouillon | inscriptions | complet | encours | termine | annule */
   status: text("status").notNull().default("brouillon"),
   startsAt: timestamp("starts_at", { withTimezone: true }),
+  /** Le dernier jour : un tournoi est une période, pas une soirée. */
+  endsAt: timestamp("ends_at", { withTimezone: true }),
   /** Après quoi on ne s'inscrit plus, et le tableau peut être tiré. */
   closesAt: timestamp("closes_at", { withTimezone: true }),
   winnerId: uuid("winner_id").references(() => users.id, { onDelete: "set null" }),

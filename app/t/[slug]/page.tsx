@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Cagnottes } from "@/components/tournoi/Cagnottes";
+import { heureDebut, periode } from "@/lib/periode";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, events } from "@/db";
@@ -39,9 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const d = await charger(slug);
   if (!d) return { title: "Tournoi introuvable" };
-  const quand = d.t.startsAt
-    ? d.t.startsAt.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Africa/Douala" })
-    : d.jumeau?.day;
+  const quand = d.t.startsAt ? periode(d.t.startsAt, d.t.endsAt, { jourSemaine: true }) : d.jumeau?.day;
   return metadonneesApercu({
     titre: `Tournoi · ${d.t.title}`,
     description: [d.t.presentation || resume(d.t), quand, d.venue?.name].filter(Boolean).join(" — "),
@@ -57,7 +56,7 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
   const { t, venue, jumeau } = d;
   const ouvert = t.status === "inscriptions";
   const quand = t.startsAt
-    ? t.startsAt.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Douala" })
+    ? `${periode(t.startsAt, t.endsAt, { jourSemaine: true })} · dès ${heureDebut(t.startsAt)}`
     : jumeau?.day || "Date à confirmer";
 
   return (

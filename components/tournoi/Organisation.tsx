@@ -20,8 +20,8 @@ const formats = Object.entries(FORMATS).map(([value, label]) => ({ value, label 
 
 const categories = Object.entries(CATEGORIES).map(([value, label]) => ({ value, label }));
 
-/** `datetime-local` veut « 2026-03-14T19:00 », sans fuseau ni secondes. */
-const pourInput = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 16) : "");
+/** `datetime-local` veut « 2026-03-14T19:00 », sans fuseau ni secondes — à l'heure de Douala (UTC+1). */
+const pourInput = (d: Date | null) => (d ? new Date(new Date(d).getTime() + 3_600_000).toISOString().slice(0, 16) : "");
 
 export type LigneTournoi = {
   tournament: Tournament;
@@ -169,6 +169,13 @@ export function FormulaireTournoi({
             name="startsAt"
             type="datetime-local"
             defaultValue={pourInput(base0?.startsAt ?? null)}
+          />
+          <Field
+            label="Fin (dernier jour)"
+            name="endsAt"
+            type="datetime-local"
+            defaultValue={pourInput(base0?.endsAt ?? null)}
+            hint="Vide si tout se joue le même jour."
           />
           <Field
             label="Clôture des candidatures"
