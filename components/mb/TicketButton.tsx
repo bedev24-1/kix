@@ -17,6 +17,7 @@ export function TicketButton({
   phone,
   owned = false,
   terminee = false,
+  libelle = "Billet d'entrée",
 }: {
   eventId: string;
   eventTitle: string;
@@ -24,6 +25,8 @@ export function TicketButton({
   phone: string;
   owned?: boolean;
   terminee?: boolean;
+  /** « Billet spectateur » sur la soirée d'un tournoi : ce n'est pas la place d'un joueur. */
+  libelle?: string;
 }) {
   const { notify } = useSnackbar();
   const router = useRouter();
@@ -85,7 +88,7 @@ export function TicketButton({
     <>
       <div className="flex items-center gap-3.5">
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] text-muted">{ferme ? "Billetterie close" : "Billet joueur"}</span>
+          <span className="text-[11px] text-muted">{ferme ? "Billetterie close" : libelle}</span>
           <span className="text-xl font-bold tracking-[-0.03em]">{price > 0 ? fcfa(price) : "Gratuit"}</span>
         </div>
         <button
@@ -108,7 +111,7 @@ export function TicketButton({
           defaultPhone={phone}
           start={start}
           onPaid={onPaid}
-          hint="Billet joueur · place gardée jusqu'au check-in"
+          hint={`${libelle} · place gardée jusqu'au check-in`}
           label={`Payer mon billet · ${fcfa(price)}`}
         />
         <button

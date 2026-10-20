@@ -684,3 +684,30 @@ export async function getShift(venueId: string): Promise<{
     best: top[0] ? { name: top[0].name, scans: Number(top[0].scans) } : null,
   };
 }
+
+/** Le public d'une soirée : quelques visages et le compte des places payées ou gardées. */
+export async function getSpectateurs(eventId: string, limite = 4) {
+  const filtre = and(eq(tickets.eventId, eventId), inArray(tickets.status, ["valid", "used", "guichet"]));
+  const [visages, total] = await Promise.all([
+    db
+      .selectDistinctOn([users.id], { id: users.id, name: users.name, avatar: users.avatar })
+      .from(tickets)
+      .innerJoin(users, eq(users.id, tickets.userId))
+      .where(filtre)
+      .orderBy(users.id)
+      .limit(limite),
+    db.select({ n: count() }).from(tickets).where(filtre),
+  ]);
+  return { visages, total: Number(total[0]?.n ?? 0) };
+}
+
+/** Les joueurs retenus d'un tableau, en visages. */
+export async function getJoueursRetenus(tournamentId: string, limite = 4) {
+  return db
+    .select({ id: users.id, name: users.name, avatar: users.avatar })
+    .from(tournamentPlayers)
+    .innerJoin(users, eq(users.id, tournamentPlayers.userId))
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")))
+    .orderBy(tournamentPlayers.seed, tournamentPlayers.createdAt)
+    .limit(limite);
+}

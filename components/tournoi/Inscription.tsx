@@ -76,6 +76,7 @@ export function Inscription({
             price={ticketPrice}
             phone={phone}
             owned={billetPris}
+            libelle="Billet spectateur"
           />
         ) : (
           <p className="text-[12.5px] text-muted">La billetterie ouvre bientôt.</p>

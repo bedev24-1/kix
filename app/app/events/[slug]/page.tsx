@@ -1,13 +1,12 @@
-import Image from "next/image";
 import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TicketButton } from "@/components/mb/TicketButton";
-import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { BookmarkIcon, CalendarIcon, ChevronLeftIcon, PinIcon } from "@/components/icons";
 import { PartagerBouton } from "@/components/mb/PartagerBouton";
-import { getEvent, getTickets, getVenues } from "@/lib/queries";
+import { getEvent, getJoueursRetenus, getSpectateurs, getTickets, getTournoiDeLEvenement, getVenues } from "@/lib/queries";
+import { Participants } from "@/components/mb/Participants";
 import { soireeTerminee } from "@/lib/soirees";
 import { requireUser } from "@/lib/session";
 
@@ -26,7 +25,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const venue = venues.find((v) => v.id === event.venueId);
   const owned = tickets.some((t) => t.event.id === event.id && (t.ticket.status === "valid" || t.ticket.status === "guichet"));
   const terminee = soireeTerminee(event.endedAt);
-  const avatars = ["/img/p-ariel.jpg", "/img/p-yannick.jpg", "/img/p-champion.jpg"];
+  const [tournoi, spectateurs] = await Promise.all([getTournoiDeLEvenement(event.id), getSpectateurs(event.id)]);
+  const joueurs = tournoi ? await getJoueursRetenus(tournoi.tournoi.id) : [];
 
   return (
     <div className="-mx-5 -mt-4 pb-40 lg:mx-0 lg:mt-0 lg:pb-0">
@@ -106,29 +106,22 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           />
         </div>
 
-        <Card className="flex items-center gap-3 px-3.5 py-3">
-          <div className="flex">
-            {avatars.map((src, i) => (
-              <Image
-                key={src}
-                src={src}
-                alt=""
-                width={34}
-                height={34}
-                className={`h-9 w-9 rounded-full border-2 border-bg object-cover ${i > 0 ? "-ml-3" : ""}`}
-              />
-            ))}
-            <span className="-ml-3 grid h-9 w-9 place-items-center rounded-full border-2 border-bg bg-surface-2 text-[10px] font-semibold text-dim">
-              +{Math.max(0, event.attendees - avatars.length)}
-            </span>
-          </div>
-          <div className="flex grow flex-col gap-0.5">
-            <span className="text-[13px] font-semibold">{event.attendees} joueurs inscrits</span>
-            <span className="text-[11px] text-muted">
-              Il reste {Math.max(0, event.capacity - event.attendees)} places sur {event.capacity}
-            </span>
-          </div>
-        </Card>
+        {/* Deux salles dans la salle : les joueurs du tableau, et le public.
+            Leurs places ne se comptent pas ensemble. */}
+        {tournoi ? (
+          <Participants
+            titre={`${tournoi.inscrits} joueur${tournoi.inscrits > 1 ? "s" : ""} retenu${tournoi.inscrits > 1 ? "s" : ""}`}
+            detail={`${Math.max(0, tournoi.tournoi.size - tournoi.inscrits)} places joueurs restantes sur ${tournoi.tournoi.size}`}
+            visages={joueurs}
+            total={tournoi.inscrits}
+          />
+        ) : null}
+        <Participants
+          titre={`${spectateurs.total} ${tournoi ? "spectateur" : "participant"}${spectateurs.total > 1 ? "s" : ""}`}
+          detail={`Il reste ${Math.max(0, event.capacity - event.attendees)} places ${tournoi ? "spectateurs " : ""}sur ${event.capacity}`}
+          visages={spectateurs.visages}
+          total={spectateurs.total}
+        />
 
         <div className="flex flex-col gap-2">
           <h2 className="text-base">Le déroulé</h2>
@@ -145,7 +138,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <p className="text-[13px] leading-5 text-dim">
           Place gardée jusqu&apos;à l&apos;heure du check-in. Le pass QR arrive dans « Mes billets ».
         </p>
-        <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} />
+        <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} libelle={tournoi ? "Billet spectateur" : "Billet d'entrée"} />
         <span className="text-[11px] text-muted">
           {Math.max(0, event.capacity - event.attendees)} places restantes sur {event.capacity}
         </span>
@@ -154,7 +147,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       <div className="fixed inset-x-0 bottom-24 z-20 mx-auto w-full max-w-[430px] px-5 lg:hidden">
         <div className="glass-strong rounded-full px-4 py-3">
-          <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} />
+          <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} libelle={tournoi ? "Billet spectateur" : "Billet d'entrée"} />
         </div>
       </div>
     </div>
