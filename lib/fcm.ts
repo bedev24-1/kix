@@ -172,6 +172,13 @@ async function jetonAcces(sa: CompteDeService): Promise<string | null> {
 
 export type SortieFcm = "envoye" | "mort" | "ignore";
 
+/** La raison du dernier refus, pour l'écran d'essai : sans elle, « ignoré » ne dit rien. */
+export let derniereRaisonFcm = "";
+const refus = (raison: string): SortieFcm => {
+  derniereRaisonFcm = raison;
+  return "ignore";
+};
+
 /**
  * Pousse un signal vers un jeton d'enregistrement.
  *
@@ -180,7 +187,7 @@ export type SortieFcm = "envoye" | "mort" | "ignore";
  */
 export async function envoyerFcm(token: string, urgence: "normal" | "high" = "normal"): Promise<SortieFcm> {
   const sa = compte();
-  if (!sa) return "ignore";
+  if (!sa) return refus("compte de service Firebase absent du serveur");
 
   if (!cleLisible(sa.private_key)) {
     console.error(
@@ -188,11 +195,11 @@ export async function envoyerFcm(token: string, urgence: "normal" | "high" = "no
         "figure dans le fichier .json — avec ses « \\n » — dans FIREBASE_PRIVATE_KEY, ou colle le " +
         "JSON entier dans FIREBASE_SERVICE_ACCOUNT_JSON. Aucune notification ne partira par Firebase d'ici là.",
     );
-    return "ignore";
+    return refus("FIREBASE_PRIVATE_KEY illisible");
   }
 
   const acces = await jetonAcces(sa);
-  if (!acces) return "ignore";
+  if (!acces) return refus("Google refuse le compte de service (FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)");
 
   const reponse = await fetch(
     `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
@@ -221,9 +228,19 @@ export async function envoyerFcm(token: string, urgence: "normal" | "high" = "no
   if (reponse.status === 404) return "mort";
   const detail = await reponse.text().catch(() => "");
   if (reponse.status === 403 || detail.includes("UNREGISTERED") || detail.includes("registration-token-not-registered")) {
-    return reponse.status === 403 ? "ignore" : "mort";
+    if (reponse.status !== 403) return "mort";
   }
-  return "ignore";
+  // Le message de Google tel quel, raccourci : THIRD_PARTY_AUTH_ERROR,
+  // SENDER_ID_MISMATCH… c'est lui qui dit quelle clé ne va pas.
+  const message = (() => {
+    try {
+      const lu = JSON.parse(detail) as { error?: { status?: string; message?: string } };
+      return [lu.error?.status, lu.error?.message].filter(Boolean).join(" : ");
+    } catch {
+      return detail;
+    }
+  })();
+  return refus(`FCM ${reponse.status} ${message}`.slice(0, 240));
 }
 
 /** La clé telle qu'elle sera signée. Exposée pour que la suite l'éprouve. */

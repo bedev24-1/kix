@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { db, pushSubscriptions } from "@/db";
 import { cles, jeton, TTL } from "@/lib/vapid";
-import { envoyerFcm, fcmConfigure } from "@/lib/fcm";
+import { derniereRaisonFcm, envoyerFcm, fcmConfigure } from "@/lib/fcm";
 
 export { pushConfigure } from "@/lib/vapid";
 export { fcmConfigure, projetFcm } from "@/lib/fcm";
@@ -33,7 +33,7 @@ export const envoiPossible = () => Boolean(cles()) || fcmConfigure();
  * mieux que de le lui confier chiffré.
  */
 
-export type Envoi = { envoyes: number; retires: number; ignores: number };
+export type Envoi = { envoyes: number; retires: number; ignores: number; raisons: string[] };
 
 /**
  * Pousse un signal vers tous les navigateurs d'un compte.
@@ -44,7 +44,7 @@ export type Envoi = { envoyes: number; retires: number; ignores: number };
  */
 export async function pousser(userIds: string[], urgence: "normal" | "high" = "normal"): Promise<Envoi> {
   const cfg = cles();
-  const vide: Envoi = { envoyes: 0, retires: 0, ignores: 0 };
+  const vide: Envoi = { envoyes: 0, retires: 0, ignores: 0, raisons: [] };
   if (userIds.length === 0) return vide;
   // Aucun des deux chemins n'est configuré : il n'y a rien à tenter.
   if (!cfg && !fcmConfigure()) return vide;
@@ -54,6 +54,9 @@ export async function pousser(userIds: string[], urgence: "normal" | "high" = "n
     .from(pushSubscriptions)
     .where(inArray(pushSubscriptions.userId, [...new Set(userIds)]));
   if (abonnements.length === 0) return vide;
+
+  // Pourquoi un appareil n'a rien reçu : une ligne par cause, pour l'essai.
+  const raisons = new Set<string>();
 
   const resultats = await Promise.allSettled(
     abonnements.map(async (a) => {
@@ -66,12 +69,20 @@ export async function pousser(userIds: string[], urgence: "normal" | "high" = "n
           await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, a.id));
           return "retire" as const;
         }
-        if (sortie === "ignore") return "ignore" as const;
+        if (sortie === "ignore") {
+          raisons.add(`Firebase : ${derniereRaisonFcm || "refus"}`);
+          return "ignore" as const;
+        }
         await db.update(pushSubscriptions).set({ lastSeenAt: new Date() }).where(eq(pushSubscriptions.id, a.id));
         return "envoye" as const;
       }
 
-      if (!cfg) return "ignore" as const;
+      if (!cfg) {
+        raisons.add(
+          "Push standard : VAPID_PRIVATE_KEY absente ou ne correspondant pas à NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+        );
+        return "ignore" as const;
+      }
       const origine = new URL(a.endpoint).origin;
       const reponse = await fetch(a.endpoint, {
         method: "POST",
@@ -87,7 +98,11 @@ export async function pousser(userIds: string[], urgence: "normal" | "high" = "n
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, a.id));
         return "retire" as const;
       }
-      if (!reponse.ok) return "ignore" as const;
+      if (!reponse.ok) {
+        const detail = (await reponse.text().catch(() => "")).slice(0, 160);
+        raisons.add(`Push standard ${new URL(a.endpoint).host} ${reponse.status} ${detail}`.trim());
+        return "ignore" as const;
+      }
 
       await db.update(pushSubscriptions).set({ lastSeenAt: new Date() }).where(eq(pushSubscriptions.id, a.id));
       return "envoye" as const;
@@ -101,6 +116,10 @@ export async function pousser(userIds: string[], urgence: "normal" | "high" = "n
     envoyes: compte("envoye"),
     retires: compte("retire"),
     ignores: compte("ignore") + resultats.filter((r) => r.status === "rejected").length,
+    raisons: [
+      ...raisons,
+      ...resultats.flatMap((r) => (r.status === "rejected" ? [`Erreur : ${String(r.reason).slice(0, 160)}`] : [])),
+    ],
   };
 }
 

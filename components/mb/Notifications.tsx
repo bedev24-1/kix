@@ -58,6 +58,7 @@ async function inscrire(cleVapid: string, firebase?: ConfigFirebase | null, cleW
 
   if (firebase && cleWebPushFirebase) {
     try {
+      await oublierSiAutreCle(sw, cleWebPushFirebase);
       const { jetonFcm } = await import("@/components/mb/fcm");
       const token = await jetonFcm(firebase, cleWebPushFirebase, sw);
       if (token) corps = { provider: "fcm", endpoint: token };
@@ -68,6 +69,7 @@ async function inscrire(cleVapid: string, firebase?: ConfigFirebase | null, cleW
 
   if (!corps) {
     if (!cleVapid) throw new Error("aucune clé d'envoi configurée");
+    await oublierSiAutreCle(sw, cleVapid);
     const abonnement =
       (await sw.pushManager.getSubscription()) ??
       (await sw.pushManager.subscribe({
@@ -111,6 +113,21 @@ async function desinscrire() {
   await abonnement?.unsubscribe().catch(() => false);
   ecrireLocal(CLE_ENDPOINT, null);
   ecrireLocal(CLE_COUPEE, "1");
+}
+
+/**
+ * Un abonnement garde la clé publique avec laquelle il a été créé. Si la clé
+ * du serveur a changé depuis, il ne recevra plus jamais rien — et le
+ * navigateur refuse d'en créer un second : on le retire d'abord.
+ */
+async function oublierSiAutreCle(sw: ServiceWorkerRegistration, cle: string) {
+  const abonnement = await sw.pushManager.getSubscription();
+  const actuelle = abonnement?.options.applicationServerKey;
+  if (!abonnement || !actuelle) return;
+  const attendue = b64ToU8(cle);
+  const a = new Uint8Array(actuelle);
+  if (a.length === attendue.length && a.every((o, i) => o === attendue[i])) return;
+  await abonnement.unsubscribe().catch(() => false);
 }
 
 function b64ToU8(base64: string) {

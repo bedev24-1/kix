@@ -61,7 +61,7 @@ export async function POST() {
       error:
         envoi.retires > 0
           ? "Cet abonnement n'était plus valable : il vient d'être retiré. Réactive les notifications sur l'appareil."
-          : `Le service de push a refusé l'envoi (${envoi.ignores} appareil${envoi.ignores > 1 ? "s" : ""}). Réactive les notifications sur l'appareil.`,
+          : `Rien n'est parti (${envoi.ignores} appareil${envoi.ignores > 1 ? "s" : ""}). ${envoi.raisons.join(" · ") || "Réactive les notifications sur l'appareil."}`,
     });
   }
 
