@@ -11,6 +11,7 @@ import { saveTournament } from "@/lib/actions";
 import { CATEGORIES, DISCIPLINES, ETATS, FORMATS, TAILLE_MAX, TAILLES } from "@/lib/tournois";
 import { modeDuJeu, MODES_OPTIONS } from "@/lib/regles";
 import { NIVEAUX_REQUIS } from "@/lib/niveaux";
+import { CAGNOTTES_MAX } from "@/lib/cagnottes";
 import { f } from "@/lib/format";
 import type { EventRow, Tournament, Venue } from "@/db";
 
@@ -177,9 +178,48 @@ export function FormulaireTournoi({
           />
           {ajout ? null : <Field label="Horaires" name="hours" defaultValue={jumeau?.hours} placeholder="18h → 23h" />}
 
-          <Field label="Dotation (F)" name="prizePool" type="number" min={0} defaultValue={base0?.prizePool ?? 0} />
+          {/* Plusieurs enveloppes, chacune pour quelqu'un. Leur somme fait la
+              dotation ; sans cagnotte, le champ dotation reste celui qu'on lit. */}
+          <fieldset className="flex flex-col gap-2.5 border border-line p-3 sm:col-span-2 lg:col-span-3">
+            <legend className="px-1 text-[11px] tracking-[0.1em] text-muted uppercase">Cagnottes</legend>
+            {Array.from({ length: CAGNOTTES_MAX }, (_, i) => {
+              const c = base0?.cagnottes?.[i];
+              return (
+                <div key={i} className="grid grid-cols-2 gap-2.5 sm:grid-cols-[1.2fr_1.5fr_1fr]">
+                  <Field
+                    label={`Cagnotte ${i + 1}`}
+                    name={`cagnotte_${i}_nom`}
+                    defaultValue={c?.nom}
+                    placeholder={["Vainqueur", "Finaliste", "Meilleure dame"][i] ?? "Intitulé"}
+                  />
+                  <Field
+                    label="Pour qui"
+                    name={`cagnotte_${i}_pour`}
+                    defaultValue={c?.pour}
+                    placeholder={["Le champion du tableau", "Le perdant de la finale", "La première joueuse au classement"][i] ?? "Qui la reçoit"}
+                  />
+                  <Field
+                    label="Montant (F)"
+                    name={`cagnotte_${i}_montant`}
+                    type="number"
+                    min={0}
+                    defaultValue={c?.montant || ""}
+                    className="col-span-2 sm:col-span-1"
+                  />
+                </div>
+              );
+            })}
+          </fieldset>
           <Field
-            label="Partage"
+            label="Dotation totale (F)"
+            name="prizePool"
+            type="number"
+            min={0}
+            defaultValue={base0?.prizePool ?? 0}
+            hint="Calculée toute seule quand les cagnottes sont remplies."
+          />
+          <Field
+            label="Partage (texte libre, facultatif)"
             name="prizeSplit"
             defaultValue={base0?.prizeSplit}
             placeholder="60 % au vainqueur, 30 % au finaliste, 10 % aux demi-finalistes"
@@ -208,7 +248,14 @@ export function FormulaireTournoi({
           <ImageField name="image" dossier="tournois" defaultValue={base0?.image ?? "/img/table-rack.jpg"} />
 
           <TextArea
-            label="Règlement"
+            label="Texte de présentation (affiché en tête et dans les partages)"
+            name="presentation"
+            defaultValue={base0?.presentation}
+            rows={3}
+            className="lg:col-span-3"
+          />
+          <TextArea
+            label="Règlement (replié sur la page, à ouvrir)"
             name="rules"
             defaultValue={base0?.rules}
             rows={4}

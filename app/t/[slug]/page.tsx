@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, events } from "@/db";
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     : d.jumeau?.day;
   return metadonneesApercu({
     titre: `Tournoi · ${d.t.title}`,
-    description: [resume(d.t), quand, d.venue?.name, d.t.rules].filter(Boolean).join(" — "),
+    description: [d.t.presentation || resume(d.t), quand, d.venue?.name].filter(Boolean).join(" — "),
     image: d.t.image,
     chemin: `/t/${d.t.slug}`,
   });
@@ -80,8 +81,16 @@ export default async function TournoiPublic({ params }: { params: Promise<{ slug
         <Info quoi="Dotation" valeur={t.prizePool > 0 ? `${t.prizePool.toLocaleString("fr-FR")} F` : "—"} />
       </dl>
 
-      {t.prizeSplit ? <p className="text-[13px] text-dim">{t.prizeSplit}</p> : null}
-      {t.rules ? <p className="text-[14px] leading-6 whitespace-pre-line text-dim">{t.rules}</p> : null}
+      {t.presentation ? (
+        <p className="text-[14px] leading-6 whitespace-pre-line text-dim">{t.presentation}</p>
+      ) : null}
+      <Cagnottes cagnottes={t.cagnottes ?? []} partage={t.prizeSplit} />
+      {t.rules ? (
+        <details className="rounded-panel border border-line px-4 py-3">
+          <summary className="cursor-pointer list-none text-[13px] font-semibold [&::-webkit-details-marker]:hidden">Règlement →</summary>
+          <p className="mt-2 text-[13.5px] leading-6 whitespace-pre-line text-dim">{t.rules}</p>
+        </details>
+      ) : null}
 
       <div className="flex flex-col gap-2.5">
         {ouvert ? (

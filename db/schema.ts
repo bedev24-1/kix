@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Vitrine } from "../lib/vitrine";
+import type { Cagnotte } from "../lib/cagnottes";
 import {
   type AnyPgColumn,
   boolean,
@@ -328,6 +329,10 @@ export const tournaments = mb.table("tournaments", {
   prizePool: integer("prize_pool").notNull().default(0),
   /** Comment elle se partage, en clair : « 60 / 30 / 10 ». */
   prizeSplit: text("prize_split").notNull().default(""),
+  /** Les enveloppes, chacune pour quelqu'un. Leur somme fait la dotation. */
+  cagnottes: jsonb("cagnottes").$type<Cagnotte[]>().notNull().default([]),
+  /** Le texte qu'on montre et qu'on partage — distinct du règlement. */
+  presentation: text("presentation").notNull().default(""),
   rules: text("rules").notNull().default(""),
   image: text("image").notNull().default("/img/table-rack.jpg"),
   /** brouillon | inscriptions | complet | encours | termine | annule */

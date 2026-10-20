@@ -7,6 +7,7 @@ import { Bracket, type DuelView } from "@/components/tournoi/Bracket";
 import { Poules, Programme } from "@/components/tournoi/Poules";
 import { Inscription, type MaCandidature } from "@/components/tournoi/Inscription";
 import { PartageTournoi } from "@/components/tournoi/Partage";
+import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon, PinIcon, TrophyIcon } from "@/components/icons";
@@ -176,6 +177,10 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
           </Card>
         ) : null}
 
+        {t.presentation ? (
+          <p className="text-[14px] leading-6 whitespace-pre-line text-dim">{t.presentation}</p>
+        ) : null}
+
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           <Fait valeur={String(t.size)} quoi="places au tableau" />
           <Fait valeur={String(retenus.length)} quoi="joueurs retenus" />
@@ -199,22 +204,25 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
           ilMeManque={ilManque(user.points, t.minLevel)}
         />
 
-        {t.prizeSplit ? (
-          <Card shape="panel" className="flex flex-col gap-1.5 p-4">
-            <span className="label-caps text-[10px]">Récompenses</span>
-            <p className="text-[13.5px] leading-6 text-dim">{t.prizeSplit}</p>
-          </Card>
-        ) : null}
+        <Cagnottes cagnottes={t.cagnottes ?? []} partage={t.prizeSplit} />
 
         {/* La règle du jeu se dit toujours, même sans règlement écrit : un
-            joueur doit savoir comment on gagne un duel avant de s'inscrire. */}
+            joueur doit savoir comment on gagne un duel avant de s'inscrire.
+            Le règlement complet, lui, se replie : il n'est pas ce qu'on lit
+            en premier. */}
         <Card shape="panel" className="flex flex-col gap-1.5 p-4">
           <span className="label-caps text-[10px]">Règlement</span>
           <p className="text-[13.5px] leading-6 text-dim">
             <span className="text-ink">{nomDuJeu(t.raceTo)}.</span> {regleDuJeu(t.raceTo)}
           </p>
           {t.rules ? (
-            <p className="text-[13.5px] leading-6 whitespace-pre-line text-dim">{t.rules}</p>
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[12.5px] text-gold-text [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">Lire le règlement complet →</span>
+                <span className="hidden group-open:inline">Replier le règlement</span>
+              </summary>
+              <p className="mt-2 text-[13.5px] leading-6 whitespace-pre-line text-dim">{t.rules}</p>
+            </details>
           ) : null}
         </Card>
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -2353,6 +2354,7 @@ export async function saveTournament(formData: FormData) {
   const startsAt = date(formData, "startsAt");
   const closesAt = date(formData, "closesAt");
   const image = str(formData, "image") || "/img/table-rack.jpg";
+  const cagnottes = lireCagnottes(formData);
 
   const values = {
     slug,
@@ -2372,8 +2374,12 @@ export async function saveTournament(formData: FormData) {
     raceTo: str(formData, "mode") === "seche" ? 1 : Math.max(1, num(formData, "raceTo") || 4),
     minLevel: Math.min(5, Math.max(0, num(formData, "minLevel"))),
     entryFee: Math.max(0, num(formData, "entryFee")),
-    prizePool: Math.max(0, num(formData, "prizePool")),
+    // Des cagnottes remplies : la dotation est leur somme, pas un second
+    // chiffre à tenir d'accord à la main.
+    prizePool: totalCagnottes(cagnottes) || Math.max(0, num(formData, "prizePool")),
     prizeSplit: str(formData, "prizeSplit"),
+    cagnottes,
+    presentation: str(formData, "presentation"),
     rules: str(formData, "rules"),
     image,
     startsAt,
@@ -2456,7 +2462,9 @@ async function syncTwinEvent(tournamentId: string, formData: FormData) {
     price: prix,
     image: t.image,
     capacity: places,
-    description: t.rules,
+    // Le texte de présentation s'il y en a un : le règlement entier n'est
+    // pas ce qu'on a envie de lire sur une affiche.
+    description: t.presentation || t.rules,
     tags: "tournoi",
     // Le public ne doit voir la billetterie qu'une fois le tournoi annoncé :
     // un brouillon ne se vend pas.
