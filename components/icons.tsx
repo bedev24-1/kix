@@ -248,13 +248,19 @@ export const BrandDefs = () => (
   </svg>
 );
 
+/**
+ * L'emblème Master Break : le triangle et la queue du logo officiel
+ * (public/brand/logo.png), découpé sans retouche dans public/brand/emblem.png.
+ */
 export const MasterMark = ({ size = 30, className }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true" className={className}>
-    <path d="M32 6 58 57H6z" stroke="url(#mbGold)" strokeWidth="3.4" strokeLinejoin="round" />
-    <path d="M14 57 32 28l18 29" stroke="url(#mbGold)" strokeWidth="3" strokeLinejoin="round" />
-    <circle cx="32" cy="19" r="2.6" fill="url(#mbGold)" />
-    <circle cx="24" cy="46" r="2.4" fill="url(#mbGold)" />
-    <circle cx="40" cy="46" r="2.4" fill="url(#mbGold)" />
-    <path d="M24 62 56 5" stroke="url(#mbGold)" strokeWidth="2.6" strokeLinecap="round" />
-  </svg>
+  // eslint-disable-next-line @next/next/no-img-element -- petite image fixe, servie telle quelle
+  <img
+    src="/brand/emblem.png"
+    alt=""
+    aria-hidden="true"
+    width={size}
+    height={size}
+    className={className}
+    style={{ width: size, height: size, objectFit: "contain" }}
+  />
 );

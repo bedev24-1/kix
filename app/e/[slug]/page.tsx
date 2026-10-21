@@ -102,7 +102,7 @@ export default async function SoireePublique({ params }: { params: Promise<{ slu
 
       <nav className="mx-auto flex max-w-5xl items-center gap-4 px-5 py-4 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image src="/brand/mark.svg" alt="" width={26} height={26} />
+          <Image src="/brand/emblem.png" alt="" width={26} height={26} />
           <span className="text-[13px] font-extrabold tracking-[-0.02em] uppercase">Master Break</span>
         </Link>
         <div className="hidden grow justify-center gap-5 font-mono text-[9.5px] tracking-[0.1em] text-white/75 uppercase md:flex">

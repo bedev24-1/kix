@@ -37,9 +37,8 @@ export function AuthShell({
         <div className="halo halo-gold -bottom-40 -left-24 h-120 w-120" />
 
         <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
-          <Link href="/" className="flex items-center gap-3">
-            <MasterMark size={38} />
-            <span className="text-[17px] font-semibold tracking-[0.22em] uppercase">Master Break</span>
+          <Link href="/" className="self-start" aria-label="Master Break">
+            <Image src="/brand/logo.png" alt="Master Break, l'écosystème de l'excellence billard" width={327} height={257} priority className="h-28 w-auto" />
           </Link>
 
           <div className="flex flex-col gap-9">

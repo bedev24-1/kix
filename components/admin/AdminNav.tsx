@@ -36,6 +36,7 @@ const items: NavItem[] = [
   { href: "/admin/jetons", label: "Jetons", Icon: TicketIcon },
   { href: "/admin/tournois", label: "Tournois", Icon: TrophyIcon },
   { href: "/admin/abonnements", label: "Abonnements", Icon: BoltIcon },
+  { href: "/admin/notifications", label: "Notifications", Icon: BellIcon },
   { href: "/admin/popups", label: "Pop-ups", Icon: BellIcon },
   { href: "/admin/promotions", label: "Promotions", Icon: ChartIcon },
   { href: "/admin/profils", label: "Profils & certification", Icon: UserIcon },

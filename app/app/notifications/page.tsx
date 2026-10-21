@@ -17,6 +17,7 @@ const icons: Record<string, React.ReactNode> = {
   event: <TicketIcon size={18} />,
   reward: <TrophyIcon size={18} />,
   system: <BellIcon size={18} />,
+  annonce: <BellIcon size={18} />,
 };
 
 function ago(date: Date): string {

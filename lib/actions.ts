@@ -123,6 +123,14 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   const ok = await verifyPassword(password, found?.passwordHash ?? DECOY_HASH);
   if (!found || !ok) return { error: "Numéro ou mot de passe incorrect.", field: "password", values };
 
+  // Les comptes du jeu de démonstration partagent un mot de passe qui a été
+  // affiché publiquement : en production, il n'ouvre plus rien. MB_DEMO=1 le
+  // rouvre, pour une base de recette.
+  if (process.env.MB_DEMO !== "1" && password === (process.env.MB_DEMO_PASSWORD ?? "masterbreak")) {
+    console.warn(`[mb] connexion refusée avec le mot de passe de démonstration (${phone})`);
+    return { error: "Les comptes de démonstration sont fermés.", field: "password", values };
+  }
+
   await openSession(found.id, found.role);
   return null;
 }

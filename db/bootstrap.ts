@@ -113,6 +113,34 @@ async function promoteAdmin(db: ReturnType<typeof createDb>) {
   else console.log(`[mb] MB_ADMIN_PHONE=${phone} : aucun compte à promouvoir (inscris-toi, puis redémarre)`);
 }
 
+/**
+ * Les comptes du jeu de démonstration ont eu leur mot de passe affiché sur la
+ * page de connexion : la connexion le refuse désormais, et on ferme ici les
+ * sessions déjà ouvertes avec. Seuls les numéros du jeu sont examinés — un
+ * scrypt par compte réel au démarrage serait trop lent.
+ */
+async function fermerSessionsDemo(db: ReturnType<typeof createDb>) {
+  if (process.env.MB_DEMO === "1") return;
+  const { users, sessions } = await import("./schema");
+  const { inArray } = await import("drizzle-orm");
+  const { verifyPassword } = await import("@/lib/password");
+  const numeros = [
+    "677451208", "699120345", "690000000", "678900011",
+    "670000001", "670000002", "670000003", "670000004",
+    ...Array.from({ length: 11 }, (_, i) => `6700001${String(i + 10).padStart(2, "0")}`),
+  ];
+  const comptes = await db
+    .select({ id: users.id, phone: users.phone, hash: users.passwordHash })
+    .from(users)
+    .where(inArray(users.phone, numeros));
+  const demo = process.env.MB_DEMO_PASSWORD ?? "masterbreak";
+  const ouverts: string[] = [];
+  for (const c of comptes) if (await verifyPassword(demo, c.hash)) ouverts.push(c.id);
+  if (!ouverts.length) return;
+  const fermees = await db.delete(sessions).where(inArray(sessions.userId, ouverts)).returning({ id: sessions.id });
+  console.log(`[mb] comptes de démonstration : ${ouverts.length} fermé(s), ${fermees.length} session(s) coupée(s)`);
+}
+
 /** Ce qui suit les migrations : jeu de démonstration, ménage. */
 async function finish(db: ReturnType<typeof createDb>) {
   if (process.env.MB_SKIP_SEED !== "1") {
@@ -125,6 +153,7 @@ async function finish(db: ReturnType<typeof createDb>) {
   }
 
   await promoteAdmin(db);
+  await fermerSessionsDemo(db);
 
   // Les sessions expirées ne servent plus qu'à grossir la table.
   const { purgeExpiredSessions } = await import("@/lib/auth");
