@@ -56,6 +56,11 @@ export interface PaymentProvider {
   readonly name: string;
   /** L'opérateur est réellement joignable (clés présentes). */
   readonly live: boolean;
+  /**
+   * Les moyens que l'encaisseur accepte en ce moment. Absent : tous.
+   * Un moyen absent est refusé avant tout débit, et grisé chez le client.
+   */
+  methodes?(): Promise<PaymentMethod[]>;
   charge(request: ChargeRequest): Promise<ChargeResult>;
   verify(payment: PaymentSnapshot): Promise<VerifyResult>;
   /**

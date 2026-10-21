@@ -61,7 +61,7 @@ import {
   watchTicket,
   whepUrl,
 } from "@/lib/stream";
-import { refreshPayment, startPayment, type PaymentKind } from "@/lib/payments/service";
+import { methodesDisponibles, refreshPayment, startPayment, type PaymentKind } from "@/lib/payments/service";
 import { CATEGORIES, DISCIPLINES as DISCIPLINES_LABELS, TAILLE_MAX } from "@/lib/tournois";
 import {
   createSession,
@@ -229,6 +229,11 @@ export type PaymentState = {
   kind: PaymentKind;
   targetId: string | null;
 };
+
+/** Les moyens Mobile Money ouverts : l'écran de paiement grise les autres. */
+export async function moyensDePaiement(): Promise<("om" | "momo")[]> {
+  return methodesDisponibles();
+}
 
 /**
  * Interrogé par l'écran d'attente toutes les deux secondes. Le webhook reste la

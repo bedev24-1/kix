@@ -27,10 +27,10 @@ import {
   type Payment,
 } from "@/db";
 import { freshCode, notify, uid, type Executor } from "@/lib/domain";
-import { isValidPhone, normalizePhone } from "@/lib/phone";
+import { isValidPhone, normalizePhone, operateurDuNumero } from "@/lib/phone";
 import { paymentProvider, providerNamed } from ".";
 import { shortRef } from "./pawapay";
-import { methodLabel, type Outcome, type PaymentMethod, type PaymentStatus } from "./types";
+import { methodLabel, type ChargeResult, type Outcome, type PaymentMethod, type PaymentProvider, type PaymentStatus } from "./types";
 
 /** Durée pendant laquelle le client peut encore valider sur son téléphone. */
 const WINDOW_MINUTES = 10;
@@ -97,14 +97,19 @@ export async function startPayment(input: StartInput): Promise<StartResult> {
     expiresAt: new Date(Date.now() + WINDOW_MINUTES * 60_000),
   });
 
-  const charge = await provider.charge({
-    reference,
-    amount: input.amount,
-    phone,
-    method: input.method,
-    description: input.description,
-    callbackUrl: callbackUrl(provider.name),
-  });
+  // Moyen fermé ou numéro d'un autre opérateur : refusé avant tout débit. La
+  // ligne de paiement existe déjà, pour que l'échec libère la ligne métier.
+  const refus = await refusDuMoyen(provider, input.method, phone);
+  const charge: ChargeResult = refus
+    ? { ok: false, error: refus }
+    : await provider.charge({
+        reference,
+        amount: input.amount,
+        phone,
+        method: input.method,
+        description: input.description,
+        callbackUrl: callbackUrl(provider.name),
+      });
 
   if (!charge.ok) {
     await settlePayment(reference, { status: "failed", failureReason: charge.error, detail: charge.detail });
@@ -128,6 +133,27 @@ export async function startPayment(input: StartInput): Promise<StartResult> {
     instruction: charge.instruction,
     provider: provider.name,
   };
+}
+
+/** Les moyens de paiement ouverts en ce moment chez l'encaisseur actif. */
+export async function methodesDisponibles(): Promise<PaymentMethod[]> {
+  const provider = paymentProvider();
+  return provider.methodes ? provider.methodes() : ["momo", "om"];
+}
+
+async function refusDuMoyen(provider: PaymentProvider, method: PaymentMethod, phone: string): Promise<string | null> {
+  const ouvertes = provider.methodes ? await provider.methodes() : (["momo", "om"] as PaymentMethod[]);
+  if (!ouvertes.includes(method)) {
+    const autre = ouvertes.find((m) => m !== method);
+    return `${methodLabel[method]} est indisponible pour le moment.${autre ? ` Paie avec ${methodLabel[autre]}.` : ""}`;
+  }
+  const operateur = operateurDuNumero(phone);
+  if (operateur && operateur !== method) {
+    return `Ce numéro est un numéro ${methodLabel[operateur]} : ${methodLabel[method]} ne peut pas le débiter.${
+      ouvertes.includes(operateur) ? ` Choisis ${methodLabel[operateur]}.` : ` Utilise un numéro ${methodLabel[method]}.`
+    }`;
+  }
+  return null;
 }
 
 /** Où l'encaisseur doit nous prévenir : une route par encaisseur. */

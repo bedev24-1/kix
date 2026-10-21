@@ -52,11 +52,51 @@ async function appel(chemin: string, init: RequestInit = {}): Promise<{ http: nu
   return { http: reponse.status, corps };
 }
 
+/**
+ * Les opérateurs ouverts à l'encaissement. `BUYFACT_OPERATEURS` (« MTN » ou
+ * « MTN,ORANGE ») tranche s'il est posé ; sinon on demande à buyfacturation
+ * ce que le compte pawaPay autorise réellement, toutes les 5 minutes. Faute de
+ * réponse : MTN seul, le seul ouvert aujourd'hui — mieux vaut griser Orange
+ * à tort que laisser un client attendre une demande qui ne viendra jamais.
+ */
+let memo: { methodes: PaymentMethod[]; jusqua: number } | null = null;
+
+async function methodesOuvertes(): Promise<PaymentMethod[]> {
+  const force = env("BUYFACT_OPERATEURS").toUpperCase();
+  if (force) {
+    const m: PaymentMethod[] = [];
+    if (force.includes("MTN")) m.push("momo");
+    if (force.includes("ORANGE")) m.push("om");
+    return m;
+  }
+  if (memo && memo.jusqua > Date.now()) return memo.methodes;
+  try {
+    const { base, cle } = config();
+    const r = await fetch(`${base}/api/v1/operateurs`, { headers: { "x-api-key": cle }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const corps = (await r.json()) as {
+      operateurs?: { provider?: string; operations?: { type?: string; statut?: string }[] }[];
+    };
+    const ouverts = (corps.operateurs ?? []).filter((o) =>
+      (o.operations ?? []).some((op) => op.type === "DEPOSIT" && (op.statut ?? "OPERATIONAL") === "OPERATIONAL"),
+    );
+    const m: PaymentMethod[] = [];
+    if (ouverts.some((o) => /MTN/i.test(o.provider ?? ""))) m.push("momo");
+    if (ouverts.some((o) => /ORANGE/i.test(o.provider ?? ""))) m.push("om");
+    memo = { methodes: m.length ? m : ["momo"], jusqua: Date.now() + 5 * 60_000 };
+  } catch {
+    memo = { methodes: memo?.methodes ?? ["momo"], jusqua: Date.now() + 60_000 };
+  }
+  return memo.methodes;
+}
+
 export const buyfacturation: PaymentProvider = {
   name: "buyfacturation",
   get live() {
     return buyfacturationConfigure();
   },
+
+  methodes: methodesOuvertes,
 
   async charge(request: ChargeRequest): Promise<ChargeResult> {
     try {

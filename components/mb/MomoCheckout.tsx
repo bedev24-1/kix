@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { ArrowRightIcon, CheckIcon, ClockIcon, LockIcon } from "@/components/icons";
-import { pollPayment } from "@/lib/actions";
+import { moyensDePaiement, pollPayment } from "@/lib/actions";
 import { cn } from "@/lib/cn";
 import { fcfa } from "@/lib/format";
-import { displayPhone, isValidPhone, normalizePhone } from "@/lib/phone";
+import { displayPhone, isValidPhone, normalizePhone, operateurDuNumero } from "@/lib/phone";
 
 export type Method = "om" | "momo";
 
@@ -18,6 +18,8 @@ export type StartPayment = (
 ) => Promise<{ ok: true; reference: string; instruction?: string } | { ok: false; error: string }>;
 
 type Stage = "idle" | "starting" | "waiting" | "failed";
+
+const NOMS: Record<Method, string> = { om: "Orange Money", momo: "MTN MoMo" };
 
 /** Intervalle d'interrogation : le webhook arrive en général avant. */
 const POLL_MS = 2000;
@@ -55,12 +57,47 @@ export function MomoCheckout({
   const [elapsed, setElapsed] = useState(0);
   const reference = useRef<string | null>(null);
 
+  // Les moyens ouverts chez l'encaisseur (null tant qu'on ne sait pas). Le
+  // serveur refuse de toute façon un moyen fermé : ceci évite d'y arriver.
+  const [ouvertes, setOuvertes] = useState<Method[] | null>(null);
+  useEffect(() => {
+    let vivant = true;
+    moyensDePaiement()
+      .then((m) => {
+        if (!vivant) return;
+        setOuvertes(m);
+        setMethod((actuel) => (m.includes(actuel) || !m.length ? actuel : m[0]));
+      })
+      .catch(() => {});
+    return () => {
+      vivant = false;
+    };
+  }, []);
+  const ouvert = (m: Method) => !ouvertes || ouvertes.includes(m);
+
   const clean = normalizePhone(phone);
-  const ready = isValidPhone(clean) && !disabled;
+  const operateur = operateurDuNumero(clean);
+  // Un numéro Orange quand Orange est fermé : aucun moyen ne peut le débiter.
+  const numeroFerme = operateur !== null && !ouvert(operateur);
+  const ready = isValidPhone(clean) && !numeroFerme && ouvert(method) && !disabled;
+
+  function saisir(valeur: string) {
+    setPhone(valeur);
+    setError(undefined);
+    // Le préfixe dit l'opérateur : on le choisit pour le client.
+    const op = operateurDuNumero(normalizePhone(valeur));
+    if (op && ouvert(op)) setMethod(op);
+  }
 
   async function pay() {
     if (!ready) {
-      setError("Entre un numéro Mobile Money valide.");
+      setError(
+        numeroFerme
+          ? `${NOMS[operateur!]} est indisponible pour le moment. Utilise un numéro ${NOMS[ouvertes?.[0] ?? "momo"]}.`
+          : !ouvert(method)
+            ? `${NOMS[method]} est indisponible pour le moment.`
+            : "Entre un numéro Mobile Money valide.",
+      );
       return;
     }
     setStage("starting");
@@ -149,8 +186,22 @@ export function MomoCheckout({
       <div className="flex flex-col gap-2.5">
         <h2 className="text-base">Paiement Mobile Money</h2>
         <div className="flex gap-2.5">
-          <MethodTile active={method === "om"} onClick={() => setMethod("om")} code="OM" name="Orange Money" />
-          <MethodTile active={method === "momo"} onClick={() => setMethod("momo")} code="MoMo" name="MTN MoMo" />
+          <MethodTile
+            active={method === "om"}
+            onClick={() => setMethod("om")}
+            code="OM"
+            name="Orange Money"
+            prefixe="6 9x xx xx xx"
+            indisponible={!ouvert("om")}
+          />
+          <MethodTile
+            active={method === "momo"}
+            onClick={() => setMethod("momo")}
+            code="MoMo"
+            name="MTN MoMo"
+            prefixe="6 7x xx xx xx"
+            indisponible={!ouvert("momo")}
+          />
         </div>
         <label className="glass flex h-13 items-center gap-3 rounded-full px-4">
           <span className="text-sm text-muted">+237</span>
@@ -159,12 +210,18 @@ export function MomoCheckout({
             type="tel"
             inputMode="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => saisir(e.target.value)}
             aria-label="Numéro Mobile Money"
             className="w-full grow bg-transparent text-[15px] tracking-[0.04em] outline-none placeholder:text-faint"
           />
-          {isValidPhone(clean) ? <CheckIcon size={17} className="text-gold-text" /> : null}
+          {isValidPhone(clean) && !numeroFerme ? <CheckIcon size={17} className="text-gold-text" /> : null}
         </label>
+        {numeroFerme ? (
+          <p className="text-[12px] leading-5 text-warn">
+            Ce numéro est {NOMS[operateur!]}, indisponible pour le moment. Utilise un numéro{" "}
+            {NOMS[ouvertes?.find((m) => m !== operateur) ?? "momo"]}.
+          </p>
+        ) : null}
       </div>
 
       <Card tone="dashed" shape="square" className="flex items-center justify-between px-4 py-3.5">
@@ -182,7 +239,7 @@ export function MomoCheckout({
       ) : null}
 
       <div className="mt-1 flex flex-col gap-2.5">
-        <Button size="lg" onClick={pay} loading={stage === "starting"} disabled={disabled} className="w-full">
+        <Button size="lg" onClick={pay} loading={stage === "starting"} disabled={disabled || numeroFerme} className="w-full">
           {stage === "starting" ? "Demande envoyée…" : (label ?? `Payer ${fcfa(amount)}`)}
           {stage === "starting" ? null : <ArrowRightIcon size={18} />}
         </Button>
@@ -200,18 +257,29 @@ export function MethodTile({
   onClick,
   code,
   name,
+  prefixe,
+  indisponible,
 }: {
   active: boolean;
   onClick: () => void;
   code: string;
   name: string;
+  prefixe: string;
+  indisponible?: boolean;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      disabled={indisponible}
+      aria-disabled={indisponible}
       className={cn(
         "press flex grow items-center gap-2.5 rounded-card px-3.5 py-3 text-left transition",
-        active ? "border-[1.5px] border-gold/55 bg-gold/10" : "glass hover:bg-surface-2",
+        indisponible
+          ? "glass cursor-not-allowed opacity-50"
+          : active
+            ? "border-[1.5px] border-gold/55 bg-gold/10"
+            : "glass hover:bg-surface-2",
       )}
     >
       <span
@@ -225,7 +293,7 @@ export function MethodTile({
       <span className="flex flex-col">
         <span className="text-[13px] font-medium">{name}</span>
         <span className={cn("text-[11px]", active ? "text-gold-text" : "text-muted")}>
-          {active ? "Sélectionné" : "6 9x xx xx xx"}
+          {indisponible ? "Indisponible" : active ? "Sélectionné" : prefixe}
         </span>
       </span>
     </button>
