@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BarreEcran } from "@/components/ecran/BarreEcran";
 
 type Etat =
   | { statut: "demarrage" }
   | { statut: "inconnu" }
   | { statut: "attente"; code: string; lien: string; qr: { path: string; total: number } }
   | { statut: "veille"; nom: string }
-  | { statut: "diffuse"; nom: string; titre: string; direct: boolean; whep: string; hls: string };
+  | { statut: "diffuse"; nom: string; titre: string; direct: boolean; whep: string; hls: string; matchId: string | null };
 
 const CLE = "mb.ecran.jeton";
 
@@ -147,13 +148,20 @@ export function EcranClient() {
       {etat.statut === "diffuse" && etat.direct ? (
         <>
           <video ref={video} autoPlay playsInline muted={false} className="h-full w-full object-contain" />
-          <span className="pointer-events-none absolute top-6 right-8 flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-[15px] font-semibold text-white backdrop-blur">
-            <i className="h-2 w-2 rounded-full bg-[#3ddc84]" />
-            EN DIRECT
-          </span>
-          <span className="pointer-events-none absolute bottom-7 left-8 rounded-full bg-black/60 px-5 py-2.5 text-[17px] text-white backdrop-blur">
-            {etat.titre}
-          </span>
+          {etat.matchId ? (
+            // Un match est suivi : la Barre Master Break porte déjà le direct, le titre et le score.
+            <BarreEcran key={etat.matchId} matchId={etat.matchId} />
+          ) : (
+            <>
+              <span className="pointer-events-none absolute top-6 right-8 flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-[15px] font-semibold text-white backdrop-blur">
+                <i className="h-2 w-2 rounded-full bg-[#3ddc84]" />
+                EN DIRECT
+              </span>
+              <span className="pointer-events-none absolute bottom-7 left-8 rounded-full bg-black/60 px-5 py-2.5 text-[17px] text-white backdrop-blur">
+                {etat.titre}
+              </span>
+            </>
+          )}
         </>
       ) : null}
 

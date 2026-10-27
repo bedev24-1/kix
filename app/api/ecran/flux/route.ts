@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         lu.screen.pairingCode ?? "",
         lu.stream?.id ?? "",
         lu.stream?.status ?? "",
+        lu.stream?.matchId ?? "",
       ].join("|");
     },
 
@@ -49,6 +50,8 @@ export async function GET(request: Request) {
         nom: lu.screen.name,
         titre: lu.stream.title,
         direct: lu.stream.status === "live",
+        // Le match suivi par ce direct : l'écran y branche la barre de score.
+        matchId: lu.stream.matchId ?? null,
         whep: whepUrl(lu.stream, billet),
         hls: hlsUrl(lu.stream, billet),
       };
