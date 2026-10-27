@@ -595,3 +595,113 @@
     display: none;
   }
 }
+
+/* Cartes des salles (MapLibre) : bulles et contrôles aux couleurs de l'app,
+   en sombre comme en clair. Le fond lui-même vient du style OpenFreeMap
+   accordé au thème (components/salles/tuiles.ts). Préfixés par
+   .maplibregl-map pour passer devant la feuille de style de MapLibre. */
+.maplibregl-map.maplibregl-map {
+  /* --mb-surface est translucide en sombre : la bulle prend sa teinte, opaque. */
+  --carte-fond: #152720;
+  background: var(--mb-bg);
+  font-family: var(--font-geist), system-ui, sans-serif;
+}
+.maplibregl-map .maplibregl-popup-content {
+  background: var(--carte-fond);
+  color: var(--mb-ink);
+  border: 1px solid var(--mb-line);
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+}
+.maplibregl-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--carte-fond);
+}
+.maplibregl-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--carte-fond);
+}
+.maplibregl-map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--carte-fond);
+}
+.maplibregl-map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--carte-fond);
+}
+.maplibregl-map .maplibregl-popup-close-button {
+  color: var(--mb-muted);
+  font-size: 18px;
+  right: 6px;
+  top: 4px;
+}
+.carte-bulle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 170px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.carte-bulle strong {
+  font-size: 14px;
+  padding-right: 16px;
+}
+.carte-bulle-muet {
+  color: var(--mb-muted);
+}
+.carte-bulle-actifs {
+  color: var(--mb-jade-text);
+}
+.carte-bulle-liens {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.carte-bulle-liens a {
+  color: var(--mb-gold-text);
+  font-weight: 600;
+  border-radius: 6px;
+}
+.carte-bulle-liens a:focus {
+  outline: none;
+}
+.carte-bulle-liens a:focus-visible {
+  outline: 2px solid var(--mb-gold);
+  outline-offset: 2px;
+}
+.maplibregl-map .maplibregl-ctrl-group {
+  background: var(--carte-fond);
+  border: 1px solid var(--mb-line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+}
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--mb-line);
+}
+.maplibregl-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: var(--carte-icone, none);
+}
+[data-theme="dark"] .maplibregl-map {
+  --carte-icone: invert(1);
+}
+[data-theme="light"] .maplibregl-map.maplibregl-map {
+  --carte-fond: var(--mb-surface);
+}
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib,
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show {
+  background: color-mix(in oklab, var(--mb-bg) 80%, transparent);
+  color: var(--mb-muted);
+  font-size: 10px;
+}
+.maplibregl-map .maplibregl-ctrl-attrib a {
+  color: var(--mb-muted);
+}
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  border-radius: 999px;
+}
+.maplibregl-map .maplibregl-ctrl-attrib-button {
+  filter: var(--carte-icone, none);
+}

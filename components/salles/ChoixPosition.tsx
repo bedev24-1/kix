@@ -1,15 +1,14 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { Map as CarteLeaflet, Marker } from "leaflet";
+import type { Map as CarteMapLibre, Marker } from "maplibre-gl";
 import { useSnackbar } from "@/components/ui/Snackbar";
 import { definirPositionSalle } from "@/lib/actions-salles";
 import { positionValide } from "@/lib/salles-geo";
 import { CENTRE_DEFAUT } from "./CarteSalles";
-
-const TUILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+import { replierAttribution, styleDuTheme, suivreTheme } from "./tuiles";
 
 /**
  * Placer une salle sur la carte : depuis la salle même (« Ma position
@@ -32,36 +31,52 @@ export function ChoixPosition({
   const [lng, setLng] = useState(longitude != null ? String(longitude) : "");
   const [erreur, setErreur] = useState<string>();
   const boite = useRef<HTMLDivElement>(null);
-  const carte = useRef<CarteLeaflet | null>(null);
+  const carte = useRef<CarteMapLibre | null>(null);
   const repere = useRef<Marker | null>(null);
 
   const placer = (a: number, b: number, recentrer = false) => {
     setLat(a.toFixed(6));
     setLng(b.toFixed(6));
     (async () => {
-      const L = (await import("leaflet")).default;
+      const ml = await import("maplibre-gl");
       if (!carte.current) return;
-      const icone = L.divIcon({ html: '<span style="display:block;width:22px;height:22px;border-radius:999px;background:#d4a017;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4)"></span>', className: "", iconSize: [22, 22], iconAnchor: [11, 11] });
-      if (repere.current) repere.current.setLatLng([a, b]);
-      else repere.current = L.marker([a, b], { icon: icone }).addTo(carte.current);
-      if (recentrer) carte.current.setView([a, b], 17);
+      if (repere.current) repere.current.setLngLat([b, a]);
+      else {
+        const el = document.createElement("span");
+        el.style.cssText = "display:block;width:22px;height:22px;border-radius:999px;background:var(--mb-gold);border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4)";
+        repere.current = new ml.Marker({ element: el }).setLngLat([b, a]).addTo(carte.current);
+      }
+      if (recentrer) carte.current.easeTo({ center: [b, a], zoom: 17 });
     })();
   };
 
   useEffect(() => {
     let annule = false;
+    let arreterTheme = () => {};
     (async () => {
-      const L = (await import("leaflet")).default;
+      const ml = await import("maplibre-gl");
       if (annule || !boite.current || carte.current) return;
       const depart = latitude != null && longitude != null ? { lat: latitude, lng: longitude } : CENTRE_DEFAUT;
-      const m = L.map(boite.current).setView([depart.lat, depart.lng], latitude != null ? 17 : 12);
-      L.tileLayer(TUILES, { attribution: "&copy; OpenStreetMap &copy; CARTO", maxZoom: 19, subdomains: "abcd" }).addTo(m);
-      m.on("click", (e) => placer(e.latlng.lat, e.latlng.lng));
+      const m = new ml.Map({
+        container: boite.current,
+        style: styleDuTheme(),
+        center: [depart.lng, depart.lat],
+        zoom: latitude != null ? 17 : 12,
+        attributionControl: { compact: true },
+        dragRotate: false,
+        pitchWithRotate: false,
+      });
+      m.touchZoomRotate.disableRotation();
+      m.addControl(new ml.NavigationControl({ showCompass: false }), "bottom-right");
+      m.on("click", (e) => placer(e.lngLat.lat, e.lngLat.lng));
+      arreterTheme = suivreTheme(m);
+      replierAttribution(m);
       carte.current = m;
       if (latitude != null && longitude != null) placer(latitude, longitude);
     })();
     return () => {
       annule = true;
+      arreterTheme();
       carte.current?.remove();
       carte.current = null;
       repere.current = null;
