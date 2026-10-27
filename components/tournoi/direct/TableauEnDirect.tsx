@@ -8,6 +8,7 @@ import { Groupes } from "@/components/tournoi/direct/Groupes";
 import { Visage } from "@/components/tournoi/direct/Visage";
 import { tableauEnDirect, type DuelVue } from "@/lib/tournoi-direct";
 import { nomDuTour } from "@/lib/bracket";
+import { ImageTableau } from "@/components/tournoi/direct/ImageTableau";
 import { CATEGORIES } from "@/lib/tournois";
 import { cn } from "@/lib/cn";
 
@@ -60,7 +61,12 @@ export async function TableauEnDirect({
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[17px] font-semibold">Le tableau</h2>
-        {rien ? null : <Actualisation ids={[t.id]} signature={direct.signature} />}
+        {rien ? null : (
+          <div className="flex items-center gap-2">
+            {lance ? <ImageTableau slug={t.slug} titre={t.title} /> : null}
+            <Actualisation ids={[t.id]} signature={direct.signature} />
+          </div>
+        )}
       </div>
 
       {onglets.length > 1 ? (

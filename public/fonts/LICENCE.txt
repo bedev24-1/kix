@@ -1,0 +1,2 @@
+Geist (Regular, Bold, ExtraBold) — Vercel, sous licence SIL Open Font License 1.1.
+https://github.com/vercel/geist-font — utilisées pour l'image partageable du tableau (app/t/[slug]/arbre.png).
