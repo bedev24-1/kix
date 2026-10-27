@@ -185,12 +185,14 @@ export function PanneauDiffusion({ matchId, vue }: { matchId: string; vue: Diffu
               </button>
             </div>
           ) : null}
-          <Ligne label="Barre de score pour OBS" valeur={vue.incrustation} onCopier={() => copier(vue.incrustation, "Adresse")} />
+          <Ligne label="Barre de score pour OBS (pas la vidéo)" valeur={vue.incrustation} onCopier={() => copier(vue.incrustation, "Adresse")} />
         </>
       ) : (
         <>
-          <p className="text-[12px] text-muted">Aucun direct sur ce match. Le gérant de la salle peut l&apos;ouvrir.</p>
-          <Ligne label="Barre de score pour OBS" valeur={vue.incrustation} onCopier={() => copier(vue.incrustation, "Adresse")} />
+          <p className="text-[12px] text-muted">
+            Aucun direct sur ce match. Pour le filmer, le gérant de la salle l&apos;ouvre — ou toi, dès le niveau Cogneur.
+          </p>
+          <Ligne label="Barre de score pour OBS (pas la vidéo)" valeur={vue.incrustation} onCopier={() => copier(vue.incrustation, "Adresse")} />
         </>
       )}
 

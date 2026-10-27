@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { etatBarre } from "@/lib/barre";
+import { directDuMatch, etatBarre } from "@/lib/barre";
 import { Incrustation } from "@/components/live/barre/Incrustation";
 
 export const dynamic = "force-dynamic";
@@ -25,13 +25,14 @@ export default async function IncrustationPage({
   searchParams: Promise<{ sans?: string; fond?: string }>;
 }) {
   const [{ id }, { sans, fond }] = await Promise.all([params, searchParams]);
-  const etat = await etatBarre(id);
+  const [etat, direct] = await Promise.all([etatBarre(id), directDuMatch(id)]);
   if (!etat) notFound();
   const caches = new Set((sans ?? "").split(",").map((s) => s.trim()));
   return (
     <Incrustation
       initial={etat}
       fond={fond === "table"}
+      directId={direct && direct.status !== "ended" ? direct.id : null}
       options={{
         coin: !caches.has("coin"),
         sponsor: !caches.has("sponsor"),
