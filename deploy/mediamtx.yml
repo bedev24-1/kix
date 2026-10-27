@@ -25,7 +25,7 @@ writeTimeout: 10s
 
 authMethod: http
 # L'application décide de chaque connexion.
-authHTTPAddress: https://mb.vps.buyticle.com/api/media/auth
+authHTTPAddress: https://masterbreak.vps.buyticle.com/api/media/auth
 # Les champs transmis au crochet. `query` porte le billet de lecture.
 authHTTPExclude:
   - action: api

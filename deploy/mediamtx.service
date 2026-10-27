@@ -11,7 +11,7 @@ Description=MediaMTX — serveur média Master Break
 After=network.target
 
 [Service]
-Environment=MB_APP_URL=https://mb.vps.buyticle.com
+Environment=MB_APP_URL=https://masterbreak.vps.buyticle.com
 Environment=MB_MEDIA_HOOK_SECRET=3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5
 ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
 Restart=always

@@ -101,7 +101,7 @@ configs:
       # il demande à l'application si elle autorise, et attend un 200.
 
       authMethod: http
-      authHTTPAddress: https://mb.vps.buyticle.com/api/media/auth
+      authHTTPAddress: https://masterbreak.vps.buyticle.com/api/media/auth
       authHTTPExclude:
         - action: api
         - action: metrics
@@ -172,11 +172,11 @@ configs:
 
       paths:
         all_others:
-          runOnAvailable: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://mb.vps.buyticle.com/api/media/event?event=ready&path=$$MTX_PATH
+          runOnAvailable: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://masterbreak.vps.buyticle.com/api/media/event?event=ready&path=$$MTX_PATH
           runOnAvailableRestart: no
 
-          runOnUnavailable: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://mb.vps.buyticle.com/api/media/event?event=notready&path=$$MTX_PATH
+          runOnUnavailable: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://masterbreak.vps.buyticle.com/api/media/event?event=notready&path=$$MTX_PATH
 
-          runOnRead: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://mb.vps.buyticle.com/api/media/event?event=read&path=$$MTX_PATH
+          runOnRead: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://masterbreak.vps.buyticle.com/api/media/event?event=read&path=$$MTX_PATH
 
-          runOnUnread: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://mb.vps.buyticle.com/api/media/event?event=unread&path=$$MTX_PATH
+          runOnUnread: wget -q -O /dev/null --post-data= --header=x-mb-media:3c06a7f363ab76e13fc8f6ebdec6b2d84003d22c2451e0215b60e22e9e066ee5 https://masterbreak.vps.buyticle.com/api/media/event?event=unread&path=$$MTX_PATH

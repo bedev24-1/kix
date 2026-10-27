@@ -28,7 +28,7 @@ changement de l'une d'elles — un simple redémarrage ne suffit pas.
 | --- | --- | --- |
 | `DATABASE_URL` | oui | Supabase auto-hébergé. Depuis le même réseau Docker : `postgresql://postgres:MDP@db:5432/postgres?options=-c%20search_path%3Dmb%2Cpublic`. Le `search_path` n'est pas décoratif : tout vit dans le schéma `mb`. |
 | `MB_SKIP_SEED` | oui | `1`. Sans lui, une base vide se remplit de salles et de comptes fictifs. |
-| `MB_PUBLIC_URL` | oui | `https://mb.vps.buyticle.com` — sert aux liens sortants et au partage. |
+| `MB_PUBLIC_URL` | oui | `https://masterbreak.vps.buyticle.com` — sert aux liens sortants et au partage. |
 | `MB_QR_SECRET` | oui | N'importe quel secret long et stable. Absent, une clé est tirée au démarrage et **tous les Master Pass cessent de fonctionner à chaque redéploiement**. `openssl rand -base64 48`. |
 | `DATABASE_POOL` | non | `10` par défaut. |
 | `MB_ADMIN_PHONE` | non | Le numéro qui passe administrateur au prochain démarrage. Utile une fois, après la première inscription. |
