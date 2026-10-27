@@ -79,7 +79,16 @@ export function StreamPlayer({
       return;
     }
 
-    // Safari lit le HLS nativement ; ailleurs, hls.js fait le travail.
+    // D'abord WebRTC (WHEP) : moins d'une seconde de retard, et il lit tous
+    // les codecs qu'un téléphone envoie — VP8 compris, que le HLS ne sait pas
+    // porter (playlist sans image : la vignette restait affichée).
+    const fermerWhep = await lireEnWhep(node, ticket.whep);
+    if (fermerWhep) {
+      setPhase("playing");
+      return fermerWhep;
+    }
+
+    // Secours : le HLS. Safari le lit nativement ; ailleurs, hls.js fait le travail.
     if (node.canPlayType("application/vnd.apple.mpegurl")) {
       node.src = ticket.hls;
       setPhase("playing");
@@ -97,6 +106,15 @@ export function StreamPlayer({
     hls.loadSource(ticket.hls);
     hls.attachMedia(node);
     hls.on(Hls.Events.MANIFEST_PARSED, () => setPhase("playing"));
+    // Une playlist sans piste vidéo (codec que le HLS ne porte pas) : on le dit
+    // au lieu de laisser la vignette immobile.
+    const sansImage = window.setTimeout(() => {
+      if (node.videoWidth === 0) {
+        setPhase("waiting");
+        setMessage("Le son arrive, pas l'image. Relance la diffusion depuis le téléphone, ou essaie un autre navigateur.");
+      }
+    }, 12000);
+    node.addEventListener("loadeddata", () => window.clearTimeout(sansImage), { once: true });
     hls.on(Hls.Events.ERROR, (_e, data) => {
       if (!data.fatal) return;
       // Une source pas encore arrivée n'est pas une panne : on réessaiera.
@@ -123,7 +141,10 @@ export function StreamPlayer({
       setMessage("Le direct s'est interrompu.");
     });
 
-    return () => hls.destroy();
+    return () => {
+      window.clearTimeout(sansImage);
+      hls.destroy();
+    };
   }, [streamId]);
 
   useEffect(() => {
@@ -327,3 +348,62 @@ const MutedIcon = () => (
     <path d="M4 9v6h4l5 4V5L8 9H4zM17 10l4 4M21 10l-4 4" strokeLinejoin="round" />
   </svg>
 );
+
+/**
+ * Lecture WebRTC (WHEP), au retard d'une seconde. Rend la fonction qui ferme
+ * la connexion dès que la première image est arrivée, ou null si elle n'est pas
+ * venue à temps (réseau qui bloque l'UDP, direct pas encore lancé) : le HLS
+ * prend alors le relais.
+ */
+async function lireEnWhep(node: HTMLVideoElement, url: string, delai = 7000): Promise<(() => void) | null> {
+  if (typeof RTCPeerConnection === "undefined") return null;
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+  pc.addTransceiver("video", { direction: "recvonly" });
+  pc.addTransceiver("audio", { direction: "recvonly" });
+  pc.ontrack = (e) => {
+    if (e.streams[0] && node.srcObject !== e.streams[0]) node.srcObject = e.streams[0];
+  };
+  try {
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise<void>((resolve) => {
+      if (pc.iceGatheringState === "complete") return resolve();
+      const check = () => {
+        if (pc.iceGatheringState !== "complete") return;
+        pc.removeEventListener("icegatheringstatechange", check);
+        resolve();
+      };
+      pc.addEventListener("icegatheringstatechange", check);
+      window.setTimeout(resolve, 2000);
+    });
+    const reponse = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/sdp" },
+      body: pc.localDescription?.sdp ?? "",
+    });
+    if (!reponse.ok) throw new Error(String(reponse.status));
+    await pc.setRemoteDescription({ type: "answer", sdp: await reponse.text() });
+
+    // On attend une vraie image, pas seulement une négociation réussie.
+    const image = await new Promise<boolean>((resolve) => {
+      const fini = window.setTimeout(() => resolve(false), delai);
+      node.addEventListener(
+        "loadeddata",
+        () => {
+          window.clearTimeout(fini);
+          resolve(node.videoWidth > 0);
+        },
+        { once: true },
+      );
+    });
+    if (!image) throw new Error("pas d'image");
+    void node.play().catch(() => {});
+    return () => {
+      pc.close();
+      node.srcObject = null;
+    };
+  } catch {
+    pc.close();
+    node.srcObject = null;
+    return null;
+  }
+}
