@@ -2928,6 +2928,9 @@ export async function demarrerTournoi(tournamentId: string) {
     const premier = adversaire ? ` Premier duel contre ${adversaire}.` : t.format === "poules" ? "" : " Tu es exempté du premier tour.";
     await notify(j.userId, `C'est parti · ${t.title}`, `${place}${premier} Le programme est en ligne.`, "event", `/app/tournois/${t.slug}`);
   }
+  // Les premiers duels sont confiés aux arbitres de la liste.
+  const { attribuerLesArbitres } = await import("@/lib/tournoi-arbitrage");
+  await attribuerLesArbitres(tournamentId);
   revaliderTournoi(t.slug);
   return res;
 }
@@ -2953,6 +2956,8 @@ export async function ouvrirLeTableauFinal(tournamentId: string) {
   const { ouvrirLeTableau } = await import("@/lib/tournaments");
   const res = await ouvrirLeTableau(tournamentId);
   if (!res.ok) return res;
+  const { attribuerLesArbitres } = await import("@/lib/tournoi-arbitrage");
+  await attribuerLesArbitres(tournamentId);
 
   const qualifies = await db
     .select()
@@ -2993,13 +2998,20 @@ export async function noterDuel(duelId: string, scoreA: number, scoreB: number) 
   if (!organisateur && duel.refereeId !== auteur.id) {
     return { ok: false as const, error: "Seul l'arbitre de ce duel ou l'organisateur saisit le score." };
   }
+  // Un duel se joue avec son arbitre : quand le tournoi en a, il faut qu'il soit attribué.
+  const arbitrage = await import("@/lib/tournoi-arbitrage");
+  if (!duel.refereeId && (await arbitrage.arbitresDuTournoi(t)).length) {
+    return { ok: false as const, error: "Ce duel attend son arbitre : il sera attribué dès qu'un arbitre se libère." };
+  }
 
   const { noterResultat, getTournamentById } = await import("@/lib/tournaments");
   const avis = await import("@/lib/tournoi-avis");
   const pretsAvant = await avis.duelsPrets(duel.tournamentId);
   const res = await noterResultat(duelId, scoreA, scoreB);
   if (!res.ok) return res;
-  // Les deux joueurs apprennent le résultat et la suite ; le prochain duel prêt est annoncé.
+  // L'arbitre est libre : les duels prêts sont confiés (et leurs joueurs appelés).
+  await arbitrage.apresResultat(duel.tournamentId);
+  // Les deux joueurs apprennent le résultat et la suite ; un prochain duel encore sans arbitre est annoncé.
   await avis.avisApresResultat(duelId, pretsAvant);
 
   // Le tournoi a pu se refermer sur ce résultat : on prévient le champion.
@@ -4089,6 +4101,9 @@ export async function ajouterArbitreTournoi(tournamentId: string, arbitreId: str
     await db.insert(matchOfficials).values({ id: uid(), eventId: o.t.eventId, userId: arbitre.id, role: "referee", createdBy: o.auteur.id });
     await notify(arbitre.id, `Arbitre · ${o.t.title}`, "Tu es annoncé comme arbitre du tournoi. Tes duels apparaîtront sur sa page.", "event", `/app/tournois/${o.t.slug}`);
   }
+  // Un arbitre de plus : les duels qui attendaient le leur peuvent partir.
+  const { apresResultat } = await import("@/lib/tournoi-arbitrage");
+  await apresResultat(o.t.id);
   revaliderTournoi(o.t.slug);
   return { ok: true as const, nom: arbitre.name };
 }
@@ -4097,6 +4112,9 @@ export async function retirerArbitreTournoi(tournamentId: string, userId: string
   const o = await organisateurDe(tournamentId);
   if (!o || !o.t.eventId) return { ok: false as const, error: "Tournoi introuvable." };
   await db.delete(matchOfficials).where(and(eq(matchOfficials.eventId, o.t.eventId), eq(matchOfficials.userId, userId)));
+  // Ses duels non joués reviennent aux autres arbitres.
+  const { liberer } = await import("@/lib/tournoi-arbitrage");
+  await liberer(o.t.id, userId);
   revaliderTournoi(o.t.slug);
   return { ok: true as const };
 }

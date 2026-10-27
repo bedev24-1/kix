@@ -105,7 +105,8 @@ export async function avisApresResultat(duelId: string, pretsAvant: Set<string>)
 /** Un duel a désormais ses deux joueurs : chacun apprend contre qui il joue. */
 export async function avisDuelPret(duelId: string) {
   const d = (await db.select().from(tournamentMatches).where(eq(tournamentMatches.id, duelId)).limit(1))[0];
-  if (!d || !d.playerAId || !d.playerBId || d.status !== "attente") return;
+  // Déjà confié à un arbitre : les joueurs ont reçu l'appel, pas besoin d'un second avis.
+  if (!d || !d.playerAId || !d.playerBId || d.status !== "attente" || d.refereeId) return;
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, d.tournamentId)).limit(1))[0];
   if (!t || t.status !== "encours") return;
   const qui = await joueursDe([d.playerAId, d.playerBId]);

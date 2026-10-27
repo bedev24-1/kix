@@ -17,6 +17,7 @@ import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/icons";
 import { nomDuTour } from "@/lib/bracket";
 import { nomDuDuel } from "@/lib/double";
+import { FeuilleArbitres, type LigneArbitre } from "@/components/tournoi/FeuilleArbitres";
 import {
   duree,
   getBracket,
@@ -114,6 +115,26 @@ export async function ConsoleTournoi({
   const placables = retenus
     .filter((j) => j.player.seed !== null)
     .map((j) => ({ id: j.player.id, nom: j.player.nickname || j.user.name, place: placeDe(j.player.id, j.player.groupe, j.player.seed) }));
+
+  // La feuille des arbitres : qui tient quel duel, ce que chacun a arbitré.
+  const tousLesDuels = [...poules, ...duels];
+  const libelle = (d: (typeof tousLesDuels)[number]) =>
+    `${noms.get(d.playerAId ?? "")?.nom ?? "?"} – ${noms.get(d.playerBId ?? "")?.nom ?? "?"} · ${
+      d.stage === "poule" ? `Poule ${nomDeLaPoule(d.groupe ?? 1)}` : nomDuDuel(d, tours, nomDuTour)
+    }`;
+  const feuille: LigneArbitre[] = arbitres.map((a) => {
+    const siens = tousLesDuels.filter((d) => d.refereeId === a.id);
+    const enCours = siens.find((d) => d.status === "attente" || d.status === "encours");
+    return {
+      id: a.id,
+      nom: a.nom,
+      enCours: enCours ? { libelle: libelle(enCours), table: enCours.tableLabel } : null,
+      termines: siens.filter((d) => d.status === "termine").map((d) => ({ libelle: libelle(d), score: `${d.scoreA}-${d.scoreB}` })),
+    };
+  });
+  const sansArbitre = lance
+    ? tousLesDuels.filter((d) => d.status === "attente" && d.playerAId && d.playerBId && !d.refereeId).map(libelle)
+    : [];
 
   // Tirage préparé : les places encore libres, où poser un joueur.
   const libres: { valeur: string; libelle: string }[] = [];
@@ -230,14 +251,28 @@ export async function ConsoleTournoi({
       <section className="flex flex-col gap-3">
         <h2 className="text-[15px] font-semibold">Arbitres du tournoi</h2>
         <p className="text-[12px] text-muted">
-          Choisis parmi les arbitres Master Break actifs, puis désigne-les duel par duel, avec la table.
-          L&apos;arbitre d&apos;un duel en saisit le score depuis la page du tournoi.
+          Choisis parmi les arbitres Master Break actifs. Une fois le tournoi lancé, chaque duel prêt est confié
+          automatiquement à un arbitre libre — celui qui en a le moins fait, jamais un joueur du duel. Il le suit
+          jusqu&apos;au score, saisi depuis la page du tournoi, puis reçoit le suivant. Tu peux toujours changer
+          l&apos;arbitre ou la table d&apos;un duel à la main.
         </p>
         <GestionArbitres
           tournamentId={tournoi.id}
           arbitres={arbitres}
           disponibles={(await arbitresActifs()).map((a) => ({ id: a.id, nom: a.nom, phone: displayPhone(a.phone) }))}
         />
+        {arbitres.length && lance ? (
+          <>
+            <h3 className="pt-1 text-[14px] font-semibold">Feuille des arbitres</h3>
+            <FeuilleArbitres lignes={feuille} enAttente={sansArbitre} />
+          </>
+        ) : null}
+        {lance && !arbitres.length ? (
+          <p className="text-[12px] text-warn">
+            Aucun arbitre annoncé : les duels se saisissent depuis cette console. Ajoute des arbitres pour qu&apos;ils
+            soient attribués automatiquement.
+          </p>
+        ) : null}
       </section>
 
       {prepare ? (
