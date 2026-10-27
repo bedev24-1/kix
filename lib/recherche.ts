@@ -56,7 +56,7 @@ export async function chercherPartout(terme: string, moi: string): Promise<Resul
       .select()
       .from(venues)
       .where(and(eq(venues.active, true), sql`(${venues.name} ilike ${motif} or ${venues.area} ilike ${motif})`))
-      .orderBy(venues.distanceKm)
+      .orderBy(venues.name)
       .limit(6),
     db
       .select()

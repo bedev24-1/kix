@@ -18,7 +18,6 @@ export const f = (value: number) => `${group(value)} F`;
 /** 7 -> « 07 » : les soldes de jetons se lisent sur deux chiffres. */
 export const pad2 = (value: number) => String(value).padStart(2, "0");
 
-export const km = (value: number) => `${value.toString().replace(".", ",")} km`;
 
 export function clockFrom(seconds: number): string {
   const m = Math.floor(seconds / 60);

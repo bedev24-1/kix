@@ -1,5 +1,5 @@
 /**
- * La géographie des salles : distances, présence sur place, itinéraire.
+ * La géographie des salles : distances et présence sur place.
  *
  * Pur, sans base ni navigateur : la page, la carte et les actions serveur
  * font le même calcul, et donnent donc la même réponse.
@@ -38,11 +38,6 @@ export function distanceLisible(m: number): string {
   if (m < 1000) return `${Math.max(10, Math.round(m / 10) * 10)} m`;
   const km = m / 1000;
   return `${km < 10 ? km.toFixed(1).replace(".", ",") : Math.round(km)} km`;
-}
-
-/** Le lien qui ouvre l'itinéraire dans Google Maps (ou l'appli de cartes du téléphone). */
-export function lienItineraire(p: Point): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
 }
 
 /**

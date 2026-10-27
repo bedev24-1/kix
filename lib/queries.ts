@@ -39,7 +39,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 /* ---------------------------------------------------------------- catalogue */
 
 export async function getVenues(): Promise<Venue[]> {
-  return db.select().from(venues).where(eq(venues.active, true)).orderBy(venues.distanceKm);
+  return db.select().from(venues).where(eq(venues.active, true)).orderBy(venues.name);
 }
 
 export async function getVenue(slug: string) {

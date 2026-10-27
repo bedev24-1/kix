@@ -2,7 +2,8 @@ import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { cn } from "@/lib/cn";
-import { f, km } from "@/lib/format";
+import { f } from "@/lib/format";
+import { DistanceSalle } from "@/components/salles/ProchesDeToi";
 import type { Venue } from "@/db";
 
 export function VenueCard({ venue, className }: { venue: Venue; className?: string }) {
@@ -23,7 +24,8 @@ export function VenueCard({ venue, className }: { venue: Venue; className?: stri
           {venue.name} {venue.certifiee ? <BadgeCertifie motif="gerant" /> : null}
         </span>
         <span className="text-[11px] text-muted">
-          {km(venue.distanceKm)} · Jeton {f(venue.tokenPrice)}
+          Jeton {f(venue.tokenPrice)}
+          <DistanceSalle lat={venue.latitude} lng={venue.longitude} demander="si_autorisee" />
         </span>
       </div>
     </Link>

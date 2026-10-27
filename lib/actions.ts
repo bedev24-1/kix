@@ -840,7 +840,6 @@ export async function saveVenue(formData: FormData) {
     tables: num(formData, "tables"),
     freeTables: num(formData, "freeTables"),
     tokenPrice: num(formData, "tokenPrice"),
-    distanceKm: num(formData, "distanceKm"),
     image: str(formData, "image") || "/img/hall-dark.jpg",
     active: bool(formData, "active"),
   };

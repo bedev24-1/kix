@@ -7,12 +7,12 @@ import { Card } from "@/components/ui/Card";
 import { ArrowRightIcon, CoinIcon, PinIcon, TableIcon } from "@/components/icons";
 import { getFloor, getVenue } from "@/lib/queries";
 import { requireUser } from "@/lib/session";
-import { f, km } from "@/lib/format";
+import { f } from "@/lib/format";
 import { joueursActifs, maPresence } from "@/lib/presences";
-import { lienItineraire } from "@/lib/salles-geo";
 import { niveauDe, nomDuNiveau } from "@/lib/niveaux";
 import { BoutonPresence, InviterPresents } from "@/components/salles/PresenceSalle";
 import { CarteSalles } from "@/components/salles/CarteSalles";
+import { DistanceSalle } from "@/components/salles/ProchesDeToi";
 
 const COMMENT = { en_jeu: "en partie", a_table: "à une table", present: "présent" } as const;
 
@@ -36,7 +36,7 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
 
   return (
     <>
-      <ScreenHeader title={venue.name} subtitle={`${venue.area}, ${venue.city} · ${km(venue.distanceKm)}`} back="/app/salles" />
+      <ScreenHeader title={venue.name} subtitle={`${venue.area}, ${venue.city}`} back="/app/salles" />
 
       <div className="relative h-44 overflow-hidden rounded-panel lg:h-64">
         <Photo src={venue.image} alt={venue.name} fill sizes="100vw" className="object-cover" priority />
@@ -50,10 +50,17 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
             <CoinIcon size={13} className="text-gold-text" />
             Jeton {f(venue.tokenPrice)}
           </span>
-          <span className="glass-strong flex items-center gap-1.5 rounded-full px-3 py-1.5">
-            <PinIcon size={13} />
-            {venue.address}
-          </span>
+          {venue.address ? (
+            <span className="glass-strong flex items-center gap-1.5 rounded-full px-3 py-1.5">
+              <PinIcon size={13} />
+              {venue.address}
+            </span>
+          ) : null}
+          {placee ? (
+            <span className="glass-strong flex items-center gap-1.5 rounded-full px-3 py-1.5">
+              <DistanceSalle lat={venue.latitude} lng={venue.longitude} avant="À " />
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -94,14 +101,8 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
 
       {placee ? (
         <section className="flex flex-col gap-2.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-base">Venir à la salle</h2>
-            <a href={lienItineraire({ lat: venue.latitude!, lng: venue.longitude! })} target="_blank" rel="noreferrer"
-              className="press rounded-full bg-gold px-3.5 py-1.5 text-[12px] font-semibold text-gold-ink">
-              Itinéraire
-            </a>
-          </div>
-          <CarteSalles hauteur={220} salles={[{ id: venue.id, slug: venue.slug, name: venue.name, area: `${venue.area}, ${venue.city}`, lat: venue.latitude!, lng: venue.longitude!, actifs: actifs.length }]} />
+          <h2 className="text-base">Venir à la salle</h2>
+          <CarteSalles hauteur={300} destination={venue.id} salles={[{ id: venue.id, slug: venue.slug, name: venue.name, area: `${venue.area}, ${venue.city}`, lat: venue.latitude!, lng: venue.longitude!, actifs: actifs.length }]} />
         </section>
       ) : null}
 
