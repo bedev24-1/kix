@@ -63,7 +63,7 @@ export async function TableauEnDirect({
         <h2 className="text-[17px] font-semibold">Le tableau</h2>
         {rien ? null : (
           <div className="flex items-center gap-2">
-            {lance ? <ImageTableau slug={t.slug} titre={t.title} /> : null}
+            {lance || brouillon ? <ImageTableau slug={t.slug} titre={t.title} provisoire={!lance} /> : null}
             <Actualisation ids={[t.id]} signature={direct.signature} />
           </div>
         )}

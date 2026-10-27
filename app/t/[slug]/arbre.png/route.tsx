@@ -6,6 +6,7 @@ import { tableauEnDirect, type DuelVue, type GroupeVue, type Visage } from "@/li
 import { nomDuTour } from "@/lib/bracket";
 import { CATEGORIES, DISCIPLINES, FORMATS } from "@/lib/tournois";
 import { urlPublique } from "@/lib/url-publique";
+import { getCurrentUser } from "@/lib/session";
 
 /**
  * L'image du tableau, à partager : le logo, le titre, l'essentiel du
@@ -70,8 +71,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   if (!ligne || ligne.tournament.status === "brouillon") return new Response("Tournoi introuvable", { status: 404 });
   const { tournament: t, venue } = ligne;
   const lance = t.status === "encours" || t.status === "termine";
+  // Le tirage préparé (pas encore lancé) : seul l'organisateur — l'admin, ou le
+  // gérant de la salle — peut en tirer l'image, pour l'annoncer avant le jour J.
+  let provisoire = false;
+  if (!lance && new URL(req.url).searchParams.get("brouillon") === "1") {
+    const moi = await getCurrentUser();
+    provisoire = moi?.role === "admin" || (moi?.role === "manager" && moi.venueId === t.venueId);
+    if (!provisoire) return new Response("Réservé à l'organisateur", { status: 403 });
+  }
   const direct = await tableauEnDirect(t.id);
-  if (!lance) {
+  if (!lance && !provisoire) {
     direct.arbre = [];
     direct.perdants = [];
     direct.finales = [];
@@ -160,8 +169,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   const Cote = ({ v, attente, score, gagne, fini }: { v: Visage | null; attente: string | null; score: number; gagne: boolean; fini: boolean }) => (
     <div style={{ display: "flex", alignItems: "center", height: 30, padding: "0 10px", gap: 8, background: gagne ? "rgba(224,180,58,0.12)" : "transparent" }}>
       {v ? <Pastille v={v} /> : <div style={{ width: 24, height: 24, display: "flex" }} />}
-      <div style={{ display: "flex", flexGrow: 1, fontSize: 15, fontWeight: gagne ? 800 : 400, color: v ? (fini && !gagne ? C.pale : C.encre) : C.pale }}>
-        {v ? court(v.nom, 19) : court(attente ?? "à venir", 22)}
+      <div style={{ display: "flex", flexGrow: 1, flexShrink: 1, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", fontSize: 15, fontWeight: gagne ? 800 : 400, color: v ? (fini && !gagne ? C.pale : C.encre) : C.pale }}>
+        {v ? court(v.nom, 17) : court(attente ?? "à venir", 22)}
       </div>
       {v?.seed ? <div style={{ display: "flex", fontSize: 11, color: C.pale }}>{`#${v.seed}`}</div> : null}
       <div style={{ display: "flex", width: 22, justifyContent: "flex-end", fontSize: 16, fontWeight: 800, color: gagne ? C.or : C.muet }}>
@@ -268,7 +277,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
           <img src={logo} width={150} height={118} alt="" />
           <div style={{ display: "flex", flexDirection: "column", gap: 8, flexGrow: 1 }}>
             <div style={{ display: "flex", fontSize: 13, letterSpacing: 3, color: C.or, textTransform: "uppercase" }}>
-              {t.status === "termine" ? "Tableau final" : lance ? "Tableau en direct" : "Le tournoi"}
+              {t.status === "termine" ? "Tableau final" : lance ? "Tableau en direct" : provisoire ? "Tirage provisoire · le tableau peut encore bouger" : "Le tournoi"}
             </div>
             <div style={{ display: "flex", fontSize: 46, fontWeight: 800, lineHeight: 1.05 }}>{court(t.title, 48)}</div>
             <div style={{ display: "flex", fontSize: 18, color: C.muet }}>{sousTitre.join(" · ")}</div>
@@ -330,7 +339,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
 
         {/* Pied : où suivre la suite. */}
         <div style={{ display: "flex", marginTop: "auto", alignItems: "center", justifyContent: "space-between", paddingTop: 24, borderTop: `1px solid ${C.ligne}` }}>
-          <div style={{ display: "flex", fontSize: 16, color: C.muet }}>{`Suis le tableau en direct : ${publique}/t/${t.slug}`}</div>
+          <div style={{ display: "flex", fontSize: 16, color: C.muet }}>{provisoire ? `Inscriptions et tableau : ${publique}/t/${t.slug}` : `Suis le tableau en direct : ${publique}/t/${t.slug}`}</div>
           <div style={{ display: "flex", fontSize: 16, fontWeight: 800, color: C.or, letterSpacing: 2 }}>MASTER BREAK</div>
         </div>
       </div>
@@ -345,7 +354,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       ],
       headers: {
         "Cache-Control": "no-store",
-        "Content-Disposition": `inline; filename="${t.slug}-tableau.png"`,
+        "Content-Disposition": `inline; filename="${t.slug}-${provisoire ? "tirage" : "tableau"}.png"`,
       },
     },
   );
