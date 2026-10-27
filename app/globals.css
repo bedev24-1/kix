@@ -719,3 +719,12 @@
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   filter: var(--carte-icone, none);
 }
+
+/* Barre Master Break : le chiffre du score rebondit quand il change. */
+@keyframes mba-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); color: #f6d77a; }
+  100% { transform: scale(1); }
+}
+.mba-pop { display: inline-block; animation: mba-pop 0.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mba-pop { animation: none; } }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import {
   DecisionCandidat,
+  BoutonFeuille,
   DesignationDuel,
   EncaisserGuichet,
   EtatTournoi,
@@ -240,7 +241,10 @@ export async function ConsoleTournoi({
                   termine={d.status === "termine"}
                 />
                 {d.status !== "termine" ? (
-                  <DesignationDuel duelId={d.id} arbitres={arbitres} arbitreId={d.refereeId} table={d.tableLabel} />
+                  <>
+                    <BoutonFeuille duelId={d.id} matchId={d.matchId} />
+                    <DesignationDuel duelId={d.id} arbitres={arbitres} arbitreId={d.refereeId} table={d.tableLabel} />
+                  </>
                 ) : null}
               </div>
             ))}

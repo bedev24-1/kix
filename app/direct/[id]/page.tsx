@@ -10,6 +10,8 @@ import { accessLabel, canWatch, getStream, levelLabel, type StreamAccess, type S
 import type { LiveState } from "@/components/live/MatchLive";
 import { hoteDuDirect } from "@/lib/suivis";
 import { requireUser } from "@/lib/session";
+import { etatBarre } from "@/lib/barre";
+import type { EtatBarre } from "@/lib/barre-types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +40,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     const game = await getMatch(card.stream.matchId);
     if (game) {
       const events = await getMatchEvents(game.match.id);
-      const initial: LiveState = {
+      const initial: LiveState & { barre?: EtatBarre | null } = {
         id: game.match.id,
         status: game.match.status,
         scoreA: game.match.scoreA,
@@ -48,6 +50,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         winnerId: game.match.winnerId,
         stats: computeStats(game.match, events),
         events: [],
+        // La Barre Master Break dès l'ouverture, avant le premier signal du direct.
+        barre: await etatBarre(game.match.id),
       };
       match = {
         id: game.match.id,

@@ -41,6 +41,25 @@ export const FAUTES = {
 } as const;
 export type Faute = keyof typeof FAUTES;
 
+/**
+ * Le chrono de coup (shot clock), comme en tournoi pro : une durée par coup,
+ * relancée après chaque coup, et une extension par joueur et par manche qui
+ * rajoute une durée entière. `duree` à 0 : pas de chrono.
+ * Les instants sont en millisecondes (horloge du serveur).
+ */
+export type Chrono = {
+  duree: number;
+  /** En marche depuis cet instant ; nul à l'arrêt. */
+  depart: number | null;
+  /** À l'arrêt : les secondes qui restaient (nul : pas encore lancé). */
+  reste: number | null;
+  /** Secondes ajoutées par une extension sur le coup en cours. */
+  bonus: number;
+  ext: { A: boolean; B: boolean };
+};
+
+export const CHRONO_ETEINT: Chrono = { duree: 0, depart: null, reste: null, bonus: 0, ext: { A: false, B: false } };
+
 export type Etat8 = {
   manche: number;
   casseur: Cote;
@@ -53,6 +72,7 @@ export type Etat8 = {
   regle: ReglesCasse;
   /** Le dernier coup, en clair, pour la frise et l'écran. */
   dernier: string;
+  chrono: Chrono;
 };
 
 export type Coup =
@@ -82,6 +102,7 @@ export function etatInitial(casseur: Cote = "A", regle: ReglesCasse = "alternee"
     manche: 1, casseur, main: casseur, phase: "casse",
     groupes: { A: null, B: null }, empochees: [], billeEnMain: false, regle,
     dernier: "Casse à venir",
+    chrono: CHRONO_ETEINT,
   };
 }
 
@@ -101,7 +122,52 @@ export function lireEtat8(brut: unknown, defaut: Etat8 = etatInitial()): Etat8 {
     billeEnMain: !!e.billeEnMain,
     regle: e.regle === "gagnant" ? "gagnant" : "alternee",
     dernier: typeof e.dernier === "string" ? e.dernier.slice(0, 120) : "",
+    chrono: lireChrono(e.chrono),
   };
+}
+
+function lireChrono(brut: unknown): Chrono {
+  const c = (brut ?? {}) as Partial<Chrono>;
+  const nombre = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const duree = Math.max(0, Math.min(120, Math.round(nombre(c.duree) ?? 0)));
+  if (!duree) return { ...CHRONO_ETEINT, ext: { A: !!c.ext?.A, B: !!c.ext?.B } };
+  return {
+    duree,
+    depart: nombre(c.depart),
+    reste: nombre(c.reste),
+    bonus: Math.max(-duree, nombre(c.bonus) ?? 0),
+    ext: { A: !!c.ext?.A, B: !!c.ext?.B },
+  };
+}
+
+/** Les secondes restantes sur le coup en cours (nul : pas de chrono). */
+export function chronoReste(c: Chrono, maintenant: number): number | null {
+  if (!c.duree) return null;
+  if (c.depart !== null) return Math.max(0, c.duree + c.bonus - (maintenant - c.depart) / 1000);
+  return c.reste ?? c.duree + c.bonus;
+}
+
+/** Le chrono repart à plein pour le coup suivant. */
+export const chronoRelance = (c: Chrono, maintenant: number): Chrono =>
+  c.duree ? { ...c, depart: maintenant, reste: null, bonus: 0 } : c;
+
+/** Arrêt : on fige ce qui reste. */
+export const chronoPause = (c: Chrono, maintenant: number): Chrono =>
+  c.duree && c.depart !== null ? { ...c, depart: null, reste: chronoReste(c, maintenant) } : c;
+
+/** Reprise là où il s'était arrêté. */
+export function chronoReprise(c: Chrono, maintenant: number): Chrono {
+  if (!c.duree || c.depart !== null) return c;
+  const reste = c.reste ?? c.duree + c.bonus;
+  return { ...c, depart: maintenant, reste: null, bonus: reste - c.duree };
+}
+
+/** L'extension d'un joueur : une par manche, une durée entière en plus. */
+export function chronoExtension(c: Chrono, cote: Cote): Chrono {
+  if (!c.duree) throw new Error("Active d'abord le chrono.");
+  if (c.ext[cote]) throw new Error("Ce joueur a déjà pris son extension dans cette manche.");
+  const ext = { ...c.ext, [cote]: true };
+  return c.depart !== null ? { ...c, bonus: c.bonus + c.duree, ext } : { ...c, reste: (c.reste ?? c.duree + c.bonus) + c.duree, ext };
 }
 
 /** Combien de billes de son groupe il reste au joueur (7 tant que la table est ouverte). */
@@ -120,7 +186,9 @@ const liste = (b: number[]) => b.sort((x, y) => x - y).join(", ");
 /** La manche suivante : on remet les billes, et la casse suit la règle choisie. */
 export function mancheSuivante(e: Etat8, gagnant: Cote): Etat8 {
   const casseur = e.regle === "gagnant" ? gagnant : autre(e.casseur);
-  return { ...etatInitial(casseur, e.regle), manche: e.manche + 1, dernier: `Manche ${e.manche + 1} · casse` };
+  // Le chrono garde sa durée ; les extensions repartent à zéro, il attend la casse.
+  const chrono: Chrono = { ...e.chrono, depart: null, reste: null, bonus: 0, ext: { A: false, B: false } };
+  return { ...etatInitial(casseur, e.regle), manche: e.manche + 1, dernier: `Manche ${e.manche + 1} · casse`, chrono };
 }
 
 /**

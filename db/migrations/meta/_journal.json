@@ -421,6 +421,13 @@
       "when": 1790445360000,
       "tag": "0059_rappels-tournoi",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790445420000,
+      "tag": "0060_direct-sponsor",
+      "breakpoints": true
     }
   ]
 }

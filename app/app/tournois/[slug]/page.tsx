@@ -6,7 +6,7 @@ import { db, events, tickets, tournamentMatches } from "@/db";
 import { Programme } from "@/components/tournoi/Poules";
 import { Inscription, type MaCandidature } from "@/components/tournoi/Inscription";
 import { PartageTournoi } from "@/components/tournoi/Partage";
-import { SaisieScore } from "@/components/tournoi/Actions";
+import { BoutonFeuille, SaisieScore } from "@/components/tournoi/Actions";
 import { TableauEnDirect } from "@/components/tournoi/direct/TableauEnDirect";
 import { Cagnottes } from "@/components/tournoi/Cagnottes";
 import { Card } from "@/components/ui/Card";
@@ -237,6 +237,8 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
               {aArbitrer.map((d) => (
                 <div key={d.id} className="flex flex-col gap-1">
                   {d.tableLabel ? <span className="text-[11px] text-muted">Table {d.tableLabel}</span> : null}
+                  {/* Coup par coup : la feuille 8-ball, qui alimente le direct et remonte le score seule. */}
+                  {lance ? <BoutonFeuille duelId={d.id} matchId={d.matchId} /> : null}
                   <SaisieScore
                     duelId={d.id}
                     raceTo={d.raceTo}

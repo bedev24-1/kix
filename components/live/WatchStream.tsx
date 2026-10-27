@@ -12,6 +12,9 @@ import { buyStreamPass } from "@/lib/actions";
 import { useLive } from "@/lib/useLive";
 import { fcfa } from "@/lib/format";
 import type { LiveState } from "@/components/live/MatchLive";
+import type { EtatBarre } from "@/lib/barre-types";
+import { CarteMatch } from "@/components/live/barre/CarteMatch";
+import { resteChrono, useHorloge } from "@/components/live/barre/useHorloge";
 
 export type WatchGate = { open: true } | { open: false; reason: "members" | "ppv"; price: number };
 
@@ -35,7 +38,7 @@ export function WatchStream({
   phone: string;
   live: boolean;
   poster?: string;
-  match: { id: string; a: string; b: string; aId: string; bId: string; initial: LiveState } | null;
+  match: { id: string; a: string; b: string; aId: string; bId: string; initial: LiveState & { barre?: EtatBarre | null } } | null;
 }) {
   const { notify } = useSnackbar();
   const router = useRouter();
@@ -77,9 +80,12 @@ function PlayerWithScore({
   title: string;
   live: boolean;
   poster?: string;
-  match: { id: string; a: string; b: string; aId: string; bId: string; initial: LiveState };
+  match: { id: string; a: string; b: string; aId: string; bId: string; initial: LiveState & { barre?: EtatBarre | null } };
 }) {
-  const { data } = useLive<LiveState>(`/api/live/${match.id}`, match.initial);
+  const { data, recu } = useLive<LiveState & { barre?: EtatBarre | null }>(`/api/live/${match.id}`, match.initial);
+  const barre = data.barre ?? null;
+  const horloge = useHorloge(Boolean(barre?.chrono?.fin));
+  const reste = barre ? resteChrono(barre.chrono, horloge, barre.maintenant, recu) : null;
 
   const overlay: Overlay = {
     a: match.a,
@@ -94,7 +100,8 @@ function PlayerWithScore({
 
   return (
     <div className="flex flex-col gap-3">
-      <StreamPlayer streamId={streamId} title={title} overlay={overlay} live={live} poster={poster} />
+      <StreamPlayer streamId={streamId} title={title} overlay={overlay} live={live} poster={poster} barre={barre ? { etat: barre, reste } : null} />
+      {barre ? <CarteMatch etat={barre} /> : null}
       <Link
         href={`/app/live/${match.id}`}
         className="glass press go flex items-center gap-3 rounded-card px-4 py-3 text-[13px] transition hover:bg-surface-2"

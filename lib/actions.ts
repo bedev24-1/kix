@@ -1701,6 +1701,17 @@ export async function finishMatch(matchId: string, winnerId?: string) {
     detail: "Fin de match",
   });
 
+  // Un duel de tournoi : son score remonte au tableau (avis, arbitre suivant,
+  // titre) ; les points de classement viennent du tournoi, pas du match.
+  const { duelDeLaFeuille, reporterAuTournoi } = await import("@/lib/tournoi-resultat");
+  if (await duelDeLaFeuille(matchId)) {
+    await reporterAuTournoi(matchId);
+    revalidatePath(`/app/live/${matchId}`);
+    revalidatePath("/gerant/live");
+    revalidatePath("/app/live");
+    return;
+  }
+
   for (const playerId of [match.playerAId, match.playerBId]) {
     const won = playerId === winner;
     await db
@@ -3009,33 +3020,27 @@ export async function noterDuel(duelId: string, scoreA: number, scoreB: number) 
     return { ok: false as const, error: "Ce duel attend son arbitre : il sera attribué dès qu'un arbitre se libère." };
   }
 
-  const { noterResultat, getTournamentById } = await import("@/lib/tournaments");
-  const avis = await import("@/lib/tournoi-avis");
-  const pretsAvant = await avis.duelsPrets(duel.tournamentId);
-  const res = await noterResultat(duelId, scoreA, scoreB);
-  if (!res.ok) return res;
-  // L'arbitre est libre : les duels prêts sont confiés (et leurs joueurs appelés).
-  await arbitrage.apresResultat(duel.tournamentId);
-  // Les deux joueurs apprennent le résultat et la suite ; un prochain duel encore sans arbitre est annoncé.
-  await avis.avisApresResultat(duelId, pretsAvant);
+  const { enregistrerResultatDuel } = await import("@/lib/tournoi-resultat");
+  return enregistrerResultatDuel(duelId, scoreA, scoreB);
+}
 
-  // Le tournoi a pu se refermer sur ce résultat : on prévient le champion.
-  const apres = await getTournamentById(duel.tournamentId);
-  if (apres?.status === "termine" && apres.winnerId) {
-    await notify(
-      apres.winnerId,
-      `Titre · ${apres.title}`,
-      "Tu remportes le tournoi. Les points de classement sont crédités.",
-      "reward",
-      `/app/tournois/${apres.slug}`,
-    );
+/**
+ * Ouvrir la feuille 8-ball d'un duel de tournoi : le match en direct est créé
+ * (ou retrouvé), sa course est celle du duel, et son score remontera tout
+ * seul au tableau. Pour l'organisateur ou l'arbitre du duel.
+ */
+export async function ouvrirFeuilleDuel(duelId: string): Promise<{ ok: true; matchId: string } | { ok: false; error: string }> {
+  const auteur = await requireUser();
+  const duel = (await db.select().from(tournamentMatches).where(eq(tournamentMatches.id, duelId)).limit(1))[0];
+  if (!duel) return { ok: false, error: "Duel introuvable." };
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, duel.tournamentId)).limit(1))[0];
+  if (!t) return { ok: false, error: "Tournoi introuvable." };
+  const organisateur = auteur.role === "admin" || (auteur.role === "manager" && t.venueId === auteur.venueId);
+  if (!organisateur && duel.refereeId !== auteur.id) {
+    return { ok: false, error: "Seul l'arbitre de ce duel ou l'organisateur ouvre sa feuille." };
   }
-
-  revalidatePath(`/app/tournois/${t.slug}`);
-  revalidatePath("/gerant/tournois");
-  revalidatePath("/admin/tournois");
-  revalidatePath("/app/classement");
-  return res;
+  const { feuilleDuDuel } = await import("@/lib/tournoi-resultat");
+  return feuilleDuDuel(duelId, auteur.id);
 }
 
 /* ----------------------------------------------------------- abonnements */

@@ -8,7 +8,20 @@ import { uid } from "@/lib/domain";
 import { canScore } from "@/lib/live";
 import { requireUser } from "@/lib/session";
 import { scoreRack } from "@/lib/actions";
-import { etatInitial, jouer, lireEtat8, mancheSuivante, type Cote, type Coup, type Etat8, type ReglesCasse } from "@/lib/huit";
+import {
+  chronoExtension,
+  chronoPause,
+  chronoRelance,
+  chronoReprise,
+  etatInitial,
+  jouer,
+  lireEtat8,
+  mancheSuivante,
+  type Cote,
+  type Coup,
+  type Etat8,
+  type ReglesCasse,
+} from "@/lib/huit";
 
 /** Ce qu'on garde en base : l'état de la manche, et de quoi annuler les derniers coups. */
 type Stocke = Etat8 & { pile?: Etat8[] };
@@ -78,7 +91,9 @@ export async function coup8(matchId: string, coup: Coup): Promise<R & { manche?:
 
   if (!res.gagnant) {
     const pile = [...(stocke.pile ?? []), avant].slice(-PILE_MAX);
-    await db.update(matches).set({ etat8: { ...res.etat, pile }, turnId: idDe(match, res.etat.main), updatedAt: new Date() }).where(eq(matches.id, matchId));
+    // Le coup est joué : le chrono repart à plein pour le suivant.
+    const etat = { ...res.etat, chrono: chronoRelance(res.etat.chrono, Date.now()) };
+    await db.update(matches).set({ etat8: { ...etat, pile }, turnId: idDe(match, etat.main), updatedAt: new Date() }).where(eq(matches.id, matchId));
     rafraichir(matchId);
     return { ok: true };
   }
@@ -107,6 +122,47 @@ export async function annuler8(matchId: string): Promise<R> {
     id: uid(), matchId, byId: a.byId, kind: "note", seq: await nextSeq(matchId),
     scoreA: a.match.scoreA, scoreB: a.match.scoreB, detail: "Coup annulé par l'arbitre",
   });
+  rafraichir(matchId);
+  return { ok: true };
+}
+
+export type GesteChrono =
+  | { type: "regler"; duree: number }
+  | { type: "demarrer" }
+  | { type: "pause" }
+  | { type: "relancer" }
+  | { type: "extension"; cote: Cote };
+
+/**
+ * Le chrono de coup, à la main de l'arbitre : le régler (30 s, 45 s, éteint),
+ * le lancer, l'arrêter, le remettre à plein, accorder une extension. Il
+ * repart seul après chaque coup noté.
+ */
+export async function chrono8(matchId: string, geste: GesteChrono): Promise<R> {
+  const a = await arbitre(matchId);
+  if (typeof a === "string") return { ok: false, error: a };
+  const stocke = (a.match.etat8 ?? {}) as Stocke;
+  const e = lireEtat8(stocke, etatInitial(a.match.turnId === a.match.playerBId ? "B" : "A"));
+  const maintenant = Date.now();
+  let chrono = e.chrono;
+  try {
+    if (geste.type === "regler") {
+      const duree = [0, 15, 20, 30, 45, 60].includes(geste.duree) ? geste.duree : 30;
+      chrono = { ...chrono, duree, depart: null, reste: null, bonus: 0 };
+    } else if (geste.type === "demarrer") chrono = chronoReprise(chrono, maintenant);
+    else if (geste.type === "pause") chrono = chronoPause(chrono, maintenant);
+    else if (geste.type === "relancer") chrono = chronoRelance(chrono, maintenant);
+    else chrono = chronoExtension(chrono, geste.cote === "B" ? "B" : "A");
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+  await db.update(matches).set({ etat8: { ...stocke, ...e, chrono, pile: stocke.pile ?? [] }, updatedAt: new Date() }).where(eq(matches.id, matchId));
+  if (geste.type === "extension") {
+    await db.insert(matchEvents).values({
+      id: uid(), matchId, playerId: idDe(a.match, geste.cote), byId: a.byId, kind: "note",
+      seq: await nextSeq(matchId), scoreA: a.match.scoreA, scoreB: a.match.scoreB, detail: "Extension du chrono",
+    });
+  }
   rafraichir(matchId);
   return { ok: true };
 }

@@ -15,6 +15,7 @@ import {
   lancerTableau,
   retirerArbitreTournoi,
   noterDuel,
+  ouvrirFeuilleDuel,
   ouvrirLeTableauFinal,
   placerSurPlaceLibre,
   setTournamentStatus,
@@ -529,5 +530,39 @@ export function DesignationDuel({
         </Bouton>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * La feuille 8-ball d'un duel : l'arbitre suit la partie coup par coup (et
+ * alimente la barre du direct) ; à la fin, le score remonte seul au tableau.
+ */
+export function BoutonFeuille({ duelId, matchId }: { duelId: string; matchId: string | null }) {
+  const router = useRouter();
+  const { notify } = useSnackbar();
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          if (matchId) {
+            router.push(`/arbitre/${matchId}`);
+            return;
+          }
+          const r = await ouvrirFeuilleDuel(duelId);
+          if (!r.ok) {
+            notify("Impossible", { detail: r.error, tone: "warn" });
+            return;
+          }
+          router.push(`/arbitre/${r.matchId}`);
+        })
+      }
+      className="press flex h-10 items-center justify-center gap-2 rounded-full bg-gold px-4 text-[12.5px] font-semibold text-gold-ink disabled:opacity-60"
+    >
+      {pending ? <Spinner size={14} /> : null}
+      {matchId ? "Reprendre la feuille 8-ball →" : "Arbitrer coup par coup (feuille 8-ball) →"}
+    </button>
   );
 }

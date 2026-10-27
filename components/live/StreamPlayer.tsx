@@ -5,6 +5,9 @@ import { LiveDot } from "@/components/live/LiveDot";
 import { Spinner } from "@/components/ui/Spinner";
 import { requestWatchTicket } from "@/lib/actions";
 import { cn } from "@/lib/cn";
+import type { EtatBarre } from "@/lib/barre-types";
+import { BarreObs } from "@/components/live/barre/BarreObs";
+import { MiniBarre } from "@/components/live/barre/MiniBarre";
 
 export type Overlay = {
   a: string;
@@ -33,15 +36,27 @@ export function StreamPlayer({
   poster,
   overlay,
   live,
+  barre,
 }: {
   streamId: string;
   title: string;
   poster?: string;
   overlay: Overlay;
   live: boolean;
+  /** La Barre Master Break, quand le direct suit un match arbitré. Elle remplace l'habillage simple. */
+  barre?: { etat: EtatBarre; reste: number | null } | null;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const shell = useRef<HTMLDivElement>(null);
+  // La taille du lecteur : grande barre (comme dans OBS) dès qu'il y a la place, mini-barre sur téléphone.
+  const [taille, setTaille] = useState({ l: 0, h: 0 });
+  useEffect(() => {
+    const node = shell.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const obs = new ResizeObserver(([e]) => setTaille({ l: e.contentRect.width, h: e.contentRect.height }));
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, []);
   const [phase, setPhase] = useState<Phase>("loading");
   const [message, setMessage] = useState<string>();
   const [tv, setTv] = useState(false);
@@ -181,8 +196,31 @@ export function StreamPlayer({
         </div>
       ) : null}
 
-      {/* Habillage : le score vient de la feuille de match, en direct. */}
-      {overlay ? (
+      {/* La Barre Master Break : grande quand il y a la place, mini sur téléphone.
+          Rien si la vidéo la porte déjà (incrustée par OBS). */}
+      {barre && !barre.etat.barreVideo ? (
+        taille.l >= 640 ? (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                width: 1920,
+                height: 1080,
+                transform: `translate(-50%, -50%) scale(${Math.min(taille.l / 1920, (taille.h || taille.l * 0.5625) / 1080)})`,
+              }}
+            >
+              <BarreObs etat={barre.etat} reste={barre.reste} options={{ coin: true, sponsor: true, chrono: true, annonce: true, direct: true }} />
+            </div>
+          </div>
+        ) : (
+          <MiniBarre etat={barre.etat} reste={barre.reste} />
+        )
+      ) : null}
+
+      {/* Habillage simple : le score vient de la feuille de match, en direct. */}
+      {overlay && !barre ? (
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3",
@@ -218,10 +256,18 @@ export function StreamPlayer({
         </div>
       ) : null}
 
-      <div className={cn("absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 p-3.5")}>
-        <span className="truncate rounded-full bg-black/60 px-3 py-1.5 text-[11.5px] text-white/80 backdrop-blur-md">
-          {title}
-        </span>
+      <div
+        className={cn(
+          "absolute inset-x-0 flex items-center justify-between gap-3 p-3.5",
+          // La barre occupe le bas : les commandes montent en haut à droite.
+          barre && !barre.etat.barreVideo ? (taille.l >= 640 ? "top-[10%] justify-end" : "top-0 justify-end p-2.5") : "bottom-0",
+        )}
+      >
+        {barre && !barre.etat.barreVideo ? null : (
+          <span className="truncate rounded-full bg-black/60 px-3 py-1.5 text-[11.5px] text-white/80 backdrop-blur-md">
+            {title}
+          </span>
+        )}
         <div className="flex gap-2">
           <Control onClick={() => setMuted((m) => !m)} label={muted ? "Activer le son" : "Couper le son"}>
             {muted ? <MutedIcon /> : <SoundIcon />}

@@ -13,7 +13,7 @@ export default async function ArbitrePage() {
   const matches = await getScorableMatches(user);
 
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <h1 className="text-[26px]">Les matchs que tu peux marquer</h1>
         <p className="text-[13px] leading-6 text-muted">
@@ -66,6 +66,6 @@ export default async function ArbitrePage() {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

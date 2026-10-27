@@ -1,4 +1,5 @@
-import { computeStats, getMatch, getMatchEvents, matchSignature } from "@/lib/live";
+import { computeStats, getMatch, getMatchEvents } from "@/lib/live";
+import { etatBarre, signatureBarre } from "@/lib/barre";
 import { eventStream } from "@/lib/sse";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +10,11 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
 
   return eventStream({
     signal: request.signal,
-    signature: () => matchSignature(id),
+    signature: () => signatureBarre(id),
     payload: async () => {
       const card = await getMatch(id);
       if (!card) return null;
-      const events = await getMatchEvents(id);
+      const [events, barre] = await Promise.all([getMatchEvents(id), etatBarre(id)]);
       return {
         id: card.match.id,
         status: card.match.status,
@@ -32,6 +33,8 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
           scoreB: e.scoreB,
           at: e.createdAt.toISOString(),
         })),
+        // La Barre Master Break : incrustation OBS, lecteur, feuille d'arbitre.
+        barre,
       };
     },
   });

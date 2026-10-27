@@ -26,7 +26,7 @@ export default async function ArbitreLayout({ children }: { children: React.Reac
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-5 py-6">{children}</main>
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-5 sm:py-6">{children}</main>
     </div>
   );
 }

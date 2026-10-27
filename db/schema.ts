@@ -910,6 +910,10 @@ export const streams = mb.table(
     peakViewers: integer("peak_viewers").notNull().default(0),
     /** Rediffusion, quand l'enregistrement est activé sur le serveur média. */
     replayUrl: text("replay_url"),
+    /** « Présenté par … » : le partenaire affiché sur la barre de score du direct. */
+    sponsor: text("sponsor").notNull().default(""),
+    /** La barre de score est déjà incrustée dans la vidéo (OBS) : l'app n'en ajoute pas une seconde. */
+    barreVideo: boolean("barre_video").notNull().default(false),
     createdBy: uuid("created_by").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: createdAt(),
