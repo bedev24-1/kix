@@ -2,7 +2,8 @@ import { Drawer, Field, PageHead, Pill, SubmitButton, Table, Td } from "@/compon
 import { ImageField } from "@/components/admin/ImageField";
 import { deleteVenue, saveVenue } from "@/lib/actions";
 import { getAllVenues } from "@/lib/queries";
-import { f, km } from "@/lib/format";
+import { f } from "@/lib/format";
+import { ChoixPosition } from "@/components/salles/ChoixPosition";
 
 export const metadata = { title: "Salles" };
 
@@ -31,7 +32,7 @@ export default async function AdminVenues() {
         </form>
       </Drawer>
 
-      <Table head={["Salle", "Ville", "Tables", "Libres", "Jeton", "Distance", "État", ""]}>
+      <Table head={["Salle", "Ville", "Tables", "Libres", "Jeton", "GPS", "État", ""]}>
         {venues.map((venue) => (
           <tr key={venue.id}>
             <Td className="font-semibold">{venue.name}</Td>
@@ -41,7 +42,13 @@ export default async function AdminVenues() {
             <Td>{venue.tables}</Td>
             <Td>{venue.freeTables}</Td>
             <Td>{f(venue.tokenPrice)}</Td>
-            <Td className="text-muted">{km(venue.distanceKm)}</Td>
+            <Td>
+              {venue.latitude != null ? (
+                <Pill tone="gold">Placée</Pill>
+              ) : (
+                <span className="text-[11px] text-warn">À placer</span>
+              )}
+            </Td>
             <Td>
               <Pill tone={venue.active ? "gold" : "neutral"}>{venue.active ? "Visible" : "Masquée"}</Pill>
             </Td>
@@ -71,6 +78,14 @@ export default async function AdminVenues() {
                     <input type="hidden" name="active" value="on" />
                     <SubmitButton />
                   </form>
+                </details>
+                <details className="relative">
+                  <summary className="cursor-pointer rounded-full border border-line px-3 py-1.5 text-[11px] marker:hidden">
+                    Position
+                  </summary>
+                  <div className="absolute right-0 z-10 mt-2 w-[22rem] border border-line bg-bg p-4 shadow-[var(--mb-shadow)]">
+                    <ChoixPosition venueId={venue.id} latitude={venue.latitude} longitude={venue.longitude} />
+                  </div>
                 </details>
                 <form action={deleteVenue}>
                   <input type="hidden" name="id" value={venue.id} />

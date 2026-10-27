@@ -12,6 +12,9 @@ import { useLive } from "@/lib/useLive";
 import { modeDuJeu, regleDuJeu } from "@/lib/regles";
 import { cn } from "@/lib/cn";
 import type { LiveState } from "@/components/live/MatchLive";
+import { Console8 } from "@/components/live/Console8";
+import { preparer8 } from "@/lib/actions-huit";
+import type { Cote, Etat8, ReglesCasse } from "@/lib/huit";
 
 /** Les gestes annexes, ceux qui nourrissent les statistiques sans changer le score. */
 const marks: { kind: string; label: string; tone: string }[] = [
@@ -36,7 +39,10 @@ export function ScoreConsole({
   venue,
   table,
   can,
+  huit,
 }: {
+  /** Le mode 8-ball coup par coup (billard américain). Nul : feuille simple « qui gagne la partie ». */
+  huit?: { etat: Etat8; annulable: boolean } | null;
   initial: LiveState;
   a: Side;
   b: Side;
@@ -50,6 +56,9 @@ export function ScoreConsole({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [casseur, setCasseur] = useState<Cote>("A");
+  const [regle, setRegle] = useState<ReglesCasse>("alternee");
+  const [corriger, setCorriger] = useState(false);
 
   const run = (label: string, fn: () => Promise<unknown>) =>
     startTransition(async () => {
@@ -101,14 +110,85 @@ export function ScoreConsole({
           Tu peux suivre ce match, mais pas le marquer.
         </Card>
       ) : data.status === "scheduled" ? (
+        <div className="flex flex-col gap-3">
+        {huit ? (
+          <Card shape="panel" className="flex flex-col gap-3 p-4">
+            <span className="label-caps text-[10.5px] text-muted">Qui casse en premier ?</span>
+            <div className="grid grid-cols-2 gap-2">
+              {([["A", a], ["B", b]] as const).map(([c, side]) => (
+                <button key={c} type="button" onClick={() => setCasseur(c)}
+                  className={cn("press h-11 truncate rounded-full border px-3 text-[13px]", casseur === c ? "border-gold bg-gold/15 font-semibold" : "border-line text-dim")}>
+                  {side.name}
+                </button>
+              ))}
+            </div>
+            <span className="label-caps text-[10.5px] text-muted">Les manches suivantes</span>
+            <div className="grid grid-cols-2 gap-2">
+              {([["alternee", "Casse alternée"], ["gagnant", "Le gagnant casse"]] as const).map(([r, label]) => (
+                <button key={r} type="button" onClick={() => setRegle(r)}
+                  className={cn("press h-11 rounded-full border px-3 text-[13px]", regle === r ? "border-gold bg-gold/15 font-semibold" : "border-line text-dim")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Card>
+        ) : null}
         <button
-          onClick={() => run("Match lancé", () => startMatch(initial.id))}
+          onClick={() =>
+            run("Match lancé", async () => {
+              if (huit) await preparer8(initial.id, casseur, regle);
+              await startMatch(initial.id);
+            })
+          }
           disabled={pending}
           className="press go flex h-16 items-center justify-center gap-2.5 rounded-panel bg-gold text-[16px] font-semibold text-gold-ink transition hover:brightness-105 disabled:opacity-50"
         >
           {pending ? <Spinner size={18} /> : <TargetIcon size={20} />}
           Lancer le match
         </button>
+        </div>
+      ) : live && huit ? (
+        <>
+          <Console8 matchId={initial.id} a={a} b={b} etat={huit.etat} annulable={huit.annulable} />
+          {corriger ? (
+            <Card shape="panel" className="flex flex-col gap-2 p-4">
+              <span className="label-caps text-[10.5px] text-muted">Corriger le score des manches</span>
+              <div className="grid grid-cols-2 gap-3">
+                {[a, b].map((side) => (
+                  <div key={side.id} className="flex flex-col gap-1.5">
+                    <span className="truncate text-center text-[12px]">{side.name}</span>
+                    <div className="flex gap-1.5">
+                      <button disabled={pending} onClick={() => run("Manche ajoutée", () => scoreRack(initial.id, side.id, 1))}
+                        className="press h-10 grow rounded-full border border-line disabled:opacity-45"><PlusIcon size={14} className="mx-auto" /></button>
+                      <button disabled={pending} onClick={() => run("Manche retirée", () => scoreRack(initial.id, side.id, -1))}
+                        className="press h-10 grow rounded-full border border-line disabled:opacity-45"><MinusIcon size={14} className="mx-auto" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setCorriger(false)} className="text-[12px] text-muted">Fermer</button>
+            </Card>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-4">
+              <button onClick={() => setCorriger(true)} className="press text-[12px] text-muted underline-offset-4 hover:text-ink hover:underline">
+                Corriger le score
+              </button>
+              <button onClick={() => setConfirmEnd(true)} className="press text-[12px] text-muted underline-offset-4 hover:text-ink hover:underline">
+                Terminer le match
+              </button>
+            </div>
+          )}
+          {confirmEnd ? (
+            <div className="flex flex-wrap items-center gap-2.5 rounded-panel border border-warn/40 bg-warn/10 px-4 py-3.5">
+              <span className="grow text-[12.5px] text-warn">Terminer maintenant ? Le score en cours fait foi.</span>
+              <button onClick={() => setConfirmEnd(false)} className="press h-10 rounded-full border border-line px-4 text-[12px] text-dim hover:text-ink">Continuer</button>
+              <button onClick={() => run("Match terminé", () => finishMatch(initial.id))} disabled={pending}
+                className="press flex h-10 items-center gap-1.5 rounded-full bg-warn px-4 text-[12px] font-semibold text-bg disabled:opacity-50">
+                {pending ? <Spinner size={13} /> : <CheckIcon size={14} />} Terminer
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : live ? (
         <>
           <div className="flex flex-col gap-2">

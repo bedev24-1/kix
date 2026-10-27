@@ -251,7 +251,9 @@ export async function ConsoleTournoi({
                   </span>
                   <span className="flex min-w-0 grow flex-col gap-0.5">
                     <span className="flex min-w-0 items-center gap-1 text-[13.5px] font-semibold">
-                      <span className="truncate">{player.nickname || user.name}</span>
+                      <Link href={`${retour}/${tournoi.id}/candidats/${player.id}`} className="truncate underline-offset-2 hover:underline">
+                        {player.nickname || user.name}
+                      </Link>
                       <BadgeCertifie motif={user.certifie} />
                     </span>
                     <span className="truncate text-[11.5px] text-muted">
@@ -262,6 +264,9 @@ export async function ConsoleTournoi({
                     {player.note ? (
                       <span className="text-[11.5px] text-dim text-pretty">{player.note}</span>
                     ) : null}
+                    <Link href={`${retour}/${tournoi.id}/candidats/${player.id}`} className="text-[11.5px] font-semibold text-gold-text">
+                      Voir le dossier complet →
+                    </Link>
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <Chip

@@ -54,7 +54,7 @@ export function Scoreboard({
           que collés aux bords : c'est la ligne qu'on lit d'un coup d'œil. */}
       <div
         className={cn(
-          "mx-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3",
+          "mx-auto grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3",
           // En plein écran on prend toute la largeur : les noms ont besoin de
           // place, et le score reste au centre quoi qu'il arrive.
           tv ? "gap-[4vw]" : "max-w-xl",
@@ -111,8 +111,10 @@ function Player({
     <div
       className={cn(
         "flex min-w-0 items-center gap-3",
-        tv && "gap-5",
-        align === "right" && "flex-row-reverse text-right",
+        // Sur un petit téléphone, la photo passe au-dessus du nom : sinon le nom
+        // n'a plus la place et vient chevaucher le score.
+        tv ? "gap-5" : "max-sm:flex-col max-sm:gap-1.5 max-sm:text-center",
+        align === "right" && (tv ? "flex-row-reverse text-right" : "sm:flex-row-reverse sm:text-right"),
       )}
     >
       <span className="relative shrink-0">
@@ -151,7 +153,7 @@ function Player({
         ) : null}
       </span>
 
-      <span className={cn("flex min-w-0 flex-col gap-0.5", align === "right" && "items-end")}>
+      <span className={cn("flex min-w-0 max-w-full flex-col gap-0.5", !tv && "max-sm:items-center", align === "right" && "sm:items-end", align === "right" && tv && "items-end")}>
         <span className={cn("truncate font-semibold", tv ? "text-[clamp(20px,3vw,52px)]" : "text-[15px]")}>
           {side.name}
         </span>

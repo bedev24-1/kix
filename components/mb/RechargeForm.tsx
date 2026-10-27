@@ -58,8 +58,8 @@ export function RechargeForm({ packs, venues, phone }: { packs: Pack[]; venues: 
   }
 
   return (
-    <div className="grid gap-3.5 lg:grid-cols-2 lg:items-start lg:gap-8">
-      <div className="flex flex-col gap-3.5 lg:gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2 lg:items-start lg:gap-8">
+      <div className="flex min-w-0 flex-col gap-3.5 lg:gap-6">
       <div className="flex flex-col gap-2.5">
         <h2 className="text-base">Où joues-tu ce soir ?</h2>
         <div className="-mx-5 flex md:-mx-7 gap-2.5 overflow-x-auto px-5 md:px-7 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0">
@@ -132,7 +132,7 @@ export function RechargeForm({ packs, venues, phone }: { packs: Pack[]; venues: 
 
       </div>
 
-      <div className="flex flex-col gap-3.5 lg:sticky lg:top-8 lg:gap-6">
+      <div className="flex min-w-0 flex-col gap-3.5 lg:sticky lg:top-8 lg:gap-6">
       <MomoCheckout
         amount={pack.price}
         defaultPhone={phone}

@@ -4,6 +4,8 @@ import { ScreenHeader } from "@/components/mb/AppHeader";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronRightIcon, PinIcon } from "@/components/icons";
 import { getVenues } from "@/lib/queries";
+import { comptesActifs } from "@/lib/presences";
+import { CarteSalles } from "@/components/salles/CarteSalles";
 import { f, km } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +14,16 @@ export const metadata = { title: "Salles partenaires" };
 
 export default async function SallesPage() {
   const venues = await getVenues();
+  const actifs = await comptesActifs(venues.map((v) => v.id));
+  const surCarte = venues
+    .filter((v) => v.latitude != null && v.longitude != null)
+    .map((v) => ({ id: v.id, slug: v.slug, name: v.name, area: `${v.area}, ${v.city}`, lat: v.latitude!, lng: v.longitude!, actifs: actifs.get(v.id) ?? 0 }));
 
   return (
     <>
-      <ScreenHeader title="Salles partenaires" subtitle="Tarif du jeton, tables libres et distance, mis à jour par les gérants." />
+      <ScreenHeader title="Salles partenaires" subtitle="Où jouer, qui y joue en ce moment, et comment y aller." />
+
+      <CarteSalles salles={surCarte} />
 
       <div className="flex gap-2">
         <Chip tone="solid">Douala</Chip>
@@ -44,6 +52,12 @@ export default async function SallesPage() {
               {venue.area}, {venue.city} · {km(venue.distanceKm)}
             </span>
             <span className="flex flex-wrap items-center gap-2 text-[11px]">
+              {(actifs.get(venue.id) ?? 0) > 0 ? (
+                <span className="flex items-center gap-1 text-jade-text">
+                  <span className="live-dot h-1.5 w-1.5 rounded-full bg-jade" />
+                  {actifs.get(venue.id)} en jeu
+                </span>
+              ) : null}
               <span className="text-gold-text">{venue.freeTables} tables libres</span>
               <span className="text-muted">sur {venue.tables}</span>
               <span className="text-muted">· Jeton {f(venue.tokenPrice)}</span>

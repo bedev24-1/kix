@@ -5,6 +5,7 @@ import { ChevronLeftIcon } from "@/components/icons";
 import { canScore, computeStats, getMatch, getMatchEvents } from "@/lib/live";
 import type { LiveState } from "@/components/live/MatchLive";
 import { requireUser } from "@/lib/session";
+import { etatInitial, lireEtat8 } from "@/lib/huit";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,14 @@ export default async function ArbitreMatch({ params }: { params: Promise<{ id: s
         venue={card.venue.name}
         table={card.table}
         can={right.ok}
+        huit={
+          card.match.kind === "8-ball"
+            ? {
+                etat: lireEtat8(card.match.etat8, etatInitial(card.match.turnId === card.match.playerBId ? "B" : "A")),
+                annulable: ((card.match.etat8 as { pile?: unknown[] } | null)?.pile?.length ?? 0) > 0,
+              }
+            : null
+        }
       />
 
       {!right.ok ? (

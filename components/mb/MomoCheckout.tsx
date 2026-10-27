@@ -185,7 +185,7 @@ export function MomoCheckout({
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-col gap-2.5">
         <h2 className="text-base">Paiement Mobile Money</h2>
-        <div className="flex gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           <MethodTile
             active={method === "om"}
             onClick={() => setMethod("om")}
@@ -212,7 +212,7 @@ export function MomoCheckout({
             value={phone}
             onChange={(e) => saisir(e.target.value)}
             aria-label="Numéro Mobile Money"
-            className="w-full grow bg-transparent text-[15px] tracking-[0.04em] outline-none placeholder:text-faint"
+            className="w-full min-w-0 grow bg-transparent text-[15px] tracking-[0.04em] outline-none placeholder:text-faint"
           />
           {isValidPhone(clean) && !numeroFerme ? <CheckIcon size={17} className="text-gold-text" /> : null}
         </label>
@@ -274,7 +274,7 @@ export function MethodTile({
       disabled={indisponible}
       aria-disabled={indisponible}
       className={cn(
-        "press flex grow items-center gap-2.5 rounded-card px-3.5 py-3 text-left transition",
+        "press flex min-w-0 items-center gap-2.5 rounded-card px-3 py-3 text-left transition",
         indisponible
           ? "glass cursor-not-allowed opacity-50"
           : active
@@ -290,9 +290,9 @@ export function MethodTile({
       >
         {code}
       </span>
-      <span className="flex flex-col">
-        <span className="text-[13px] font-medium">{name}</span>
-        <span className={cn("text-[11px]", active ? "text-gold-text" : "text-muted")}>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[13px] font-medium leading-tight">{name}</span>
+        <span className={cn("truncate text-[11px]", active ? "text-gold-text" : "text-muted")}>
           {indisponible ? "Indisponible" : active ? "Sélectionné" : prefixe}
         </span>
       </span>

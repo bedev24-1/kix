@@ -4,6 +4,10 @@ import { Card, StatBlock } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ClockIcon } from "@/components/icons";
 import { getFloor, getVenueReservations } from "@/lib/queries";
+import { eq } from "drizzle-orm";
+import { db, venues } from "@/db";
+import { ChoixPosition } from "@/components/salles/ChoixPosition";
+import { joueursActifs } from "@/lib/presences";
 import { requireRole } from "@/lib/session";
 import { f } from "@/lib/format";
 
@@ -34,9 +38,11 @@ export default async function SallePage() {
     );
   }
 
-  const [floor, bookings] = await Promise.all([
+  const [floor, bookings, salle, actifs] = await Promise.all([
     getFloor(manager.venueId),
     getVenueReservations(manager.venueId),
+    db.select().from(venues).where(eq(venues.id, manager.venueId)).limit(1).then((r) => r[0] ?? null),
+    joueursActifs(manager.venueId),
   ]);
 
   const busy = floor.filter((t) => t.table.status === "occupied").length;
@@ -107,6 +113,38 @@ export default async function SallePage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <Card shape="panel" className="flex flex-col gap-3 p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[17px]">Position de la salle</h2>
+            <p className="text-[12.5px] text-muted">
+              {salle?.latitude != null
+                ? "Ta salle apparaît sur la carte des joueurs, avec l'itinéraire pour venir."
+                : "Ta salle n'est pas encore sur la carte : place-la pour que les joueurs la trouvent et puissent s'y signaler."}
+            </p>
+          </div>
+          {salle ? <ChoixPosition venueId={salle.id} latitude={salle.latitude} longitude={salle.longitude} /> : null}
+        </Card>
+
+        <Card shape="panel" className="flex flex-col gap-3 p-5">
+          <h2 className="text-[17px]">Joueurs actifs · {actifs.length}</h2>
+          {actifs.length === 0 ? (
+            <p className="text-[13px] text-muted">Personne de signalé en ce moment.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {actifs.slice(0, 20).map((a) => (
+                <div key={a.id} className="flex items-center justify-between gap-2 bg-surface px-3 py-2 text-[13px]">
+                  <span className="truncate font-semibold">{a.name}</span>
+                  <span className="text-[11px] text-muted">
+                    {a.comment === "en_jeu" ? "en partie" : a.comment === "a_table" ? "à une table" : "présent"}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </Card>
