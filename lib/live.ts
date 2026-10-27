@@ -1,6 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, ne, or } from "drizzle-orm";
 import {
+  challenges,
   db,
   matchEvents,
   matchOfficials,
@@ -254,6 +255,10 @@ export async function canScore(user: User, match: Match): Promise<ScoreRight> {
   if (official) return { ok: true, as: "official" };
 
   if (user.id === match.playerAId || user.id === match.playerBId) {
+    // Un défi se joue entre deux joueurs, souvent sans arbitre : chacun peut
+    // tenir la feuille lui-même. Chaque geste reste signé de son nom.
+    const defi = (await db.select({ id: challenges.id }).from(challenges).where(eq(challenges.matchId, match.id)).limit(1))[0];
+    if (defi) return { ok: true, as: "player" };
     const venue = (await db.select({ self: venues.selfScoring }).from(venues).where(eq(venues.id, match.venueId)).limit(1))[0];
     if (venue?.self) return { ok: true, as: "player" };
     return { ok: false, reason: "Cette salle n'autorise pas l'auto-arbitrage" };

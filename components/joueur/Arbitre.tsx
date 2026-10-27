@@ -13,9 +13,9 @@ import { confierLaFeuille } from "@/lib/actions";
 /**
  * Confier la feuille de match.
  *
- * Deux joueurs qui se défient ne peuvent pas marquer et jouer en même temps.
- * Ils désignent un tiers — un ami, un habitué — qui tient la feuille depuis
- * son propre téléphone, comme un arbitre de salle. Rien d'autre à installer.
+ * Dans un défi, chacun des deux joueurs peut arbitrer lui-même, depuis son
+ * téléphone, entre deux coups. Ou ils désignent un tiers — un ami, un
+ * habitué — qui tient la feuille comme un arbitre de salle.
  */
 export function Arbitre({
   matchId,
@@ -67,10 +67,17 @@ export function Arbitre({
           </div>
         ) : (
           <p className="text-[12px] text-muted">
-            Personne ne la tient. Désigne quelqu&apos;un : il marquera les parties depuis son téléphone pendant
-            que vous jouez.
+            Arbitre toi-même depuis ton téléphone, ou confie la feuille à quelqu&apos;un qui marquera pendant que
+            vous jouez. Chaque coup noté porte le nom de celui qui l&apos;a saisi.
           </p>
         )}
+
+        <Link
+          href={`/arbitre/${matchId}`}
+          className="press grid h-11 place-items-center rounded-full bg-gold text-[13px] font-semibold text-gold-ink"
+        >
+          Arbitrer moi-même
+        </Link>
 
         <button
           onClick={() => setOuvert(true)}

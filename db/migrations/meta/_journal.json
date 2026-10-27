@@ -414,6 +414,13 @@
       "when": 1790445300000,
       "tag": "0058_arbitrage-8ball",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790445360000,
+      "tag": "0059_rappels-tournoi",
+      "breakpoints": true
     }
   ]
 }

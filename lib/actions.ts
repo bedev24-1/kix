@@ -2916,13 +2916,17 @@ export async function demarrerTournoi(tournamentId: string) {
     .select()
     .from(tournamentPlayers)
     .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")));
+  const { premierAdversaire } = await import("@/lib/tournoi-avis");
+  const contre = await premierAdversaire(tournamentId);
   for (const j of joueurs) {
     if (j.seed === null) continue;
     const place =
       t.format === "poules" && j.groupe
         ? `Tu es dans la poule ${String.fromCharCode(64 + j.groupe)}, tête de série n°${j.seed}.`
         : `Tu entres en tête de série n°${j.seed}.`;
-    await notify(j.userId, `C'est parti · ${t.title}`, `${place} Le programme est en ligne.`, "event", `/app/tournois/${t.slug}`);
+    const adversaire = contre.get(j.id);
+    const premier = adversaire ? ` Premier duel contre ${adversaire}.` : t.format === "poules" ? "" : " Tu es exempté du premier tour.";
+    await notify(j.userId, `C'est parti · ${t.title}`, `${place}${premier} Le programme est en ligne.`, "event", `/app/tournois/${t.slug}`);
   }
   revaliderTournoi(t.slug);
   return res;
@@ -2991,8 +2995,12 @@ export async function noterDuel(duelId: string, scoreA: number, scoreB: number) 
   }
 
   const { noterResultat, getTournamentById } = await import("@/lib/tournaments");
+  const avis = await import("@/lib/tournoi-avis");
+  const pretsAvant = await avis.duelsPrets(duel.tournamentId);
   const res = await noterResultat(duelId, scoreA, scoreB);
   if (!res.ok) return res;
+  // Les deux joueurs apprennent le résultat et la suite ; le prochain duel prêt est annoncé.
+  await avis.avisApresResultat(duelId, pretsAvant);
 
   // Le tournoi a pu se refermer sur ce résultat : on prévient le champion.
   const apres = await getTournamentById(duel.tournamentId);
@@ -4102,6 +4110,13 @@ export async function designerDuel(duelId: string, refereeId: string | null, tab
 
   const table = tableLabel.trim().slice(0, 30);
   await db.update(tournamentMatches).set({ refereeId: refereeId || null, tableLabel: table }).where(eq(tournamentMatches.id, duelId));
+
+  // Une table ou un arbitre vient d'être donné : le duel est appelé, les deux joueurs sont prévenus.
+  const appel = (table && table !== duel.tableLabel) || (refereeId && refereeId !== duel.refereeId);
+  if (appel) {
+    const { avisDuelAppele } = await import("@/lib/tournoi-avis");
+    await avisDuelAppele(duelId);
+  }
 
   if (refereeId && refereeId !== duel.refereeId) {
     const noms = await db

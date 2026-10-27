@@ -1451,6 +1451,28 @@ export const presences = mb.table(
 );
 
 export type Presence = typeof presences.$inferSelect;
+
+/**
+ * Les rappels de tournoi déjà envoyés : J-2, J-1, le jour J, une heure avant.
+ * Une ligne par joueur et par rappel — le tour de garde repasse toutes les dix
+ * minutes, et personne ne doit recevoir deux fois « C'est demain ».
+ */
+export const rappelsTournoi = mb.table(
+  "rappels_tournoi",
+  {
+    id: id(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // j-2 | j-1 | j0 | h-1
+    cle: text("cle").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("rappels_tournoi_idx").on(t.tournamentId, t.userId, t.cle)],
+);
 export type Screen = typeof screens.$inferSelect;
 export type Venue = typeof venues.$inferSelect;
 export type User = typeof users.$inferSelect;
