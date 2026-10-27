@@ -26,7 +26,7 @@ import {
   poulesTerminees,
   tourEnCours,
 } from "@/lib/tournaments";
-import { nomDeLaPoule } from "@/lib/poules";
+import { nombreDePoules, nomDeLaPoule } from "@/lib/poules";
 import { arbitresActifs } from "@/lib/profils-db";
 import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
@@ -83,6 +83,10 @@ export async function ConsoleTournoi({
   const tours = principal.length ? Math.max(...principal.map((d) => d.round)) : 0;
   const double = duels.some((d) => d.stage === "perdants" || d.stage === "finale");
   const courant = duels.length ? tourEnCours(duels) : 0;
+  const lance = tournoi.status === "encours" || tournoi.status === "termine";
+  // Préparé : l'arbre ou les poules existent, mais le tournoi n'est pas lancé.
+  const prepare =
+    !lance && tournoi.status !== "annule" && (duels.length > 0 || poules.length > 0 || retenus.some((j) => j.player.seed !== null));
 
   // Les duels du tour en cours dont les deux joueurs sont connus : ce sont les
   // seuls sur lesquels un organisateur a quelque chose à saisir.
@@ -94,7 +98,7 @@ export async function ConsoleTournoi({
     ? duels.filter((d) => d.status === "attente" && d.playerAId && d.playerBId)
     : duels.filter((d) => d.round === courant && d.playerAId && d.playerBId && d.status !== "exempt");
   const dePoule = poules.filter((d) => d.status !== "termine" && d.playerAId && d.playerBId);
-  const aJouer = [...(enPoules && !finies ? dePoule : duTableau)].sort(
+  const aJouer = (lance ? [...(enPoules && !finies ? dePoule : duTableau)] : []).sort(
     (a, b) => Number(a.status === "termine") - Number(b.status === "termine"),
   );
 
@@ -110,6 +114,22 @@ export async function ConsoleTournoi({
   const placables = retenus
     .filter((j) => j.player.seed !== null)
     .map((j) => ({ id: j.player.id, nom: j.player.nickname || j.user.name, place: placeDe(j.player.id, j.player.groupe, j.player.seed) }));
+
+  // Tirage préparé : les places encore libres, où poser un joueur.
+  const libres: { valeur: string; libelle: string }[] = [];
+  if (prepare && enPoules) {
+    const nbPoules = Math.max(
+      nombreDePoules(Math.max(retenus.length, tournoi.size, 2), Math.max(2, tournoi.groupSize)),
+      ...retenus.map((j) => j.player.groupe ?? 0),
+    );
+    for (let g = 1; g <= nbPoules; g++) {
+      const n = retenus.filter((j) => j.player.groupe === g).length;
+      if (n < tournoi.groupSize) libres.push({ valeur: `poule:${g}`, libelle: `Poule ${nomDeLaPoule(g)} · ${n}/${tournoi.groupSize}` });
+    }
+  } else if (prepare) {
+    const pris = new Set(retenus.map((j) => j.player.seed));
+    for (let r = 1; r <= tournoi.size; r++) if (!pris.has(r)) libres.push({ valeur: `rang:${r}`, libelle: `Place libre · rang ${r}` });
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -131,10 +151,11 @@ export async function ConsoleTournoi({
           <EtatTournoi
             id={tournoi.id}
             status={tournoi.status}
-            acceptes={regles.length}
+            acceptes={retenus.length}
             format={tournoi.format}
             poulesFinies={finies}
-            tableauOuvert={duels.length > 0}
+            tableauOuvert={lance && duels.length > 0}
+            prepare={prepare}
           />
         </div>
 
@@ -175,8 +196,8 @@ export async function ConsoleTournoi({
         <Card tone="dashed" shape="panel" className="p-3.5 text-[12.5px] text-muted">
           {retenus.length - regles.length} joueur{retenus.length - regles.length > 1 ? "s" : ""} retenu
           {retenus.length - regles.length > 1 ? "s" : ""} n&apos;{retenus.length - regles.length > 1 ? "ont" : "a"} pas
-          réglé son droit d&apos;inscription : il{retenus.length - regles.length > 1 ? "s" : ""} n&apos;
-          {retenus.length - regles.length > 1 ? "entreront" : "entrera"} pas au tableau.
+          réglé son droit d&apos;inscription. Il{retenus.length - regles.length > 1 ? "s ont" : " a"} quand même sa place au
+          tirage : encaisse au guichet, ou écarte-le avant le lancement.
         </Card>
       ) : null}
 
@@ -219,18 +240,29 @@ export async function ConsoleTournoi({
         />
       </section>
 
-      {tournoi.status === "encours" && placables.length > 1 ? (
+      {prepare ? (
+        <Card tone="dashed" shape="panel" className="flex flex-col gap-1 p-3.5 text-[12.5px] text-muted">
+          <span className="text-[13.5px] font-semibold text-ink">Tirage préparé · brouillon</span>
+          <span>
+            {enPoules ? "Les poules se remplissent" : `L'arbre de ${tournoi.size} places se remplit`} au fil des joueurs retenus :
+            chacun prend la première place libre, et un joueur écarté libère la sienne. Rien ne se joue, et personne
+            n&apos;est prévenu, avant le lancement.
+          </span>
+        </Card>
+      ) : null}
+
+      {(tournoi.status === "encours" && placables.length > 1) || (prepare && placables.length > 0) ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-[15px] font-semibold">Placer les joueurs</h2>
           <p className="text-[12px] text-muted">
-            Deux joueurs échangent leur place — {duels.length ? "leur case sur l'arbre" : "leur poule"} et leurs duels
-            — tant qu&apos;aucun des deux n&apos;a joué.
+            Deux joueurs échangent leur place — {enPoules && !(lance && duels.length) ? "leur poule" : "leur case sur l'arbre"} et leurs duels
+            — tant qu&apos;aucun des deux n&apos;a joué.{prepare ? " Avant le lancement, tu peux aussi poser un joueur sur une place libre." : ""}
           </p>
-          <Placement tournamentId={tournoi.id} joueurs={placables} />
+          <Placement tournamentId={tournoi.id} joueurs={placables} libres={libres} />
         </section>
       ) : null}
 
-      <TableauEnDirect t={tournoi} base={retour} lien={(o) => `${retour}/${o.id}`} />
+      <TableauEnDirect t={tournoi} base={retour} lien={(o) => `${retour}/${o.id}`} brouillon />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[15px] font-semibold">

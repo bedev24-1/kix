@@ -156,6 +156,8 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
   const attente = (d: (typeof duels)[number], cote: "a" | "b"): string | null => {
     if (d.stage === "poule") return null;
     if (cote === "a" ? d.playerAId || d.videA : d.playerBId || d.videB) return null;
+    // Tirage préparé : une case du premier tour encore vide attend un joueur retenu.
+    if (d.stage === "tableau" && d.round === 1 && d.status === "attente") return "Place libre";
     const fil = attendu.get(`${d.id}:${cote}`);
     if (fil) return fil;
     if (d.stage === "tableau" && d.round > 1 && !d.versGagnant) {

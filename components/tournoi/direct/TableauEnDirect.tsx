@@ -20,9 +20,12 @@ export async function TableauEnDirect({
   t,
   base,
   lien,
+  brouillon = false,
 }: {
   t: Tournament;
   base: string;
+  /** La console : le tirage préparé se montre à l'organisateur avant le lancement. */
+  brouillon?: boolean;
   /** Où mène l'onglet d'un tableau frère ; par défaut `${base}/${slug}`. */
   lien?: (o: { id: string; slug: string }) => string;
 }) {
@@ -41,7 +44,16 @@ export async function TableauEnDirect({
     .where(or(eq(tournaments.id, principalId), eq(tournaments.parentId, principalId)));
   const onglets = freres.sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
+  // Avant le lancement, le tirage n'est qu'un brouillon de l'organisateur :
+  // ni les joueurs ni le public ne le voient.
+  const lance = t.status === "encours" || t.status === "termine";
   const direct = await tableauEnDirect(t.id);
+  if (!lance && !brouillon) {
+    direct.poules = [];
+    direct.arbre = [];
+    direct.perdants = [];
+    direct.finales = [];
+  }
   const rien = direct.poules.length === 0 && direct.arbre.length === 0;
 
   return (

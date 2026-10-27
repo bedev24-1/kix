@@ -40,10 +40,9 @@ export const toursPerdants = (toursPrincipal: number) => Math.max(0, 2 * (toursP
 /** Combien de duels compte un tour du tableau des perdants. */
 export const duelsDuTourPerdants = (taille: number, round: number) => taille / 2 ** (Math.ceil(round / 2) + 1);
 
-export function plateauDouble(joueurs: string[]): Noeud[] {
-  const taille = taillePlateau(joueurs.length);
+export function plateauDouble(joueurs: (string | null)[], taille = taillePlateau(joueurs.length)): Noeud[] {
   if (taille < 2) return [];
-  const k = nombreDeTours(joueurs.length);
+  const k = nombreDeTours(taille);
   const L = toursPerdants(k);
   const noeuds = new Map<Cle, Noeud>();
   const vide = (stage: Etape, round: number, slot: number): Noeud => ({
@@ -60,7 +59,7 @@ export function plateauDouble(joueurs: string[]): Noeud[] {
   });
 
   // Tableau principal : les mêmes têtes de série qu'en simple élimination.
-  for (const d of premierTour(joueurs)) {
+  for (const d of premierTour(joueurs, taille)) {
     noeuds.set(cle("tableau", 1, d.slot), { ...vide("tableau", 1, d.slot), a: d.a, b: d.b, videA: !d.a, videB: !d.b });
   }
   for (let r = 2; r <= k; r++) for (let s = 0; s < taille / 2 ** r; s++) noeuds.set(cle("tableau", r, s), vide("tableau", r, s));

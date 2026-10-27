@@ -68,6 +68,13 @@ export const poulesTerminees = (tournamentId: string) => moteur.poulesTerminees(
 /** Le tirage des poules, sur la base de l'application. */
 export const tirerLesPoules = (tournamentId: string, mode?: moteur.ModeDeTirage) =>
   moteur.tirerLesPoules(db, tournamentId, mode);
+export const preparerLeTirage = (tournamentId: string, mode?: moteur.ModeDeTirage) =>
+  moteur.preparerLeTirage(db, tournamentId, mode);
+export const suivreLesRetenus = (tournamentId: string) => moteur.suivreLesRetenus(db, tournamentId);
+export const lancerLeTournoi = (tournamentId: string) => moteur.lancerLeTournoi(db, tournamentId);
+export const tiragePrepare = (tournamentId: string) => moteur.tiragePrepare(db, tournamentId);
+export const deplacerVersPlaceLibre = (tournamentId: string, joueurId: string, place: { rang?: number; poule?: number }) =>
+  moteur.deplacerVersPlaceLibre(db, tournamentId, joueurId, place);
 
 /** L'ouverture du tableau entre les qualifiés. */
 export const ouvrirLeTableau = (tournamentId: string) => moteur.ouvrirLeTableau(db, tournamentId);

@@ -8,6 +8,7 @@ import { CheckIcon, TrophyIcon } from "@/components/icons";
 import {
   ajouterArbitreTournoi,
   deciderCandidat,
+  demarrerTournoi,
   designerDuel,
   echangerPlaces,
   encaisserAuGuichet,
@@ -15,6 +16,7 @@ import {
   retirerArbitreTournoi,
   noterDuel,
   ouvrirLeTableauFinal,
+  placerSurPlaceLibre,
   setTournamentStatus,
 } from "@/lib/actions";
 import { cn } from "@/lib/cn";
@@ -60,18 +62,22 @@ export function EtatTournoi({
   format = "direct",
   poulesFinies = false,
   tableauOuvert = false,
+  prepare = false,
 }: {
   id: string;
   status: string;
+  /** Les joueurs retenus, réglés ou non : tous ont leur place au tirage. */
   acceptes: number;
   format?: string;
   poulesFinies?: boolean;
   tableauOuvert?: boolean;
+  /** Le tirage est préparé (arbre ou poules construits) mais pas lancé. */
+  prepare?: boolean;
 }) {
   const { faire, pending } = useGeste();
   const fige = status === "encours" || status === "termine";
   const enPoules = format === "poules";
-  const minimum = enPoules ? 3 : 2;
+  const objet = enPoules ? "les poules" : "l'arbre";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -94,37 +100,53 @@ export function EtatTournoi({
         </Bouton>
       ) : null}
 
-      {/* Deux tirages : par classement (têtes de série, favoris éloignés) ou
-          au sort. Les places se corrigent ensuite à la main, joueur contre
-          joueur, tant que personne n'a joué. */}
-      {(status === "inscriptions" || status === "complet") && acceptes >= minimum ? (
+      {/* Le tirage se prépare dès un joueur retenu, réglé ou non, pendant
+          que les candidatures continuent : chaque nouveau retenu prend la
+          première place libre. Deux façons : par classement (têtes de série,
+          favoris éloignés) ou au sort. Le lancement fige tout. */}
+      {(status === "inscriptions" || status === "complet") && acceptes >= 1 ? (
         <>
           <Bouton
-            accent
+            accent={!prepare}
             pending={pending}
             onClick={() =>
               faire(
                 () => lancerTableau(id, "hasard"),
-                enPoules ? "Poules tirées au sort" : "Tableau tiré au sort",
-                "Les joueurs sont prévenus de leur place.",
+                prepare ? "Tirage refait au sort" : `${enPoules ? "Poules préparées" : "Arbre préparé"} au sort`,
+                "Brouillon : les joueurs ne sont prévenus qu'au lancement.",
               )
             }
           >
             <TrophyIcon size={15} />
-            {enPoules ? "Poules au sort" : "Tableau au sort"}
+            {prepare ? "Refaire au sort" : enPoules ? "Préparer les poules au sort" : "Préparer l'arbre au sort"}
           </Bouton>
           <Bouton
             pending={pending}
             onClick={() =>
               faire(
                 () => lancerTableau(id, "classement"),
-                enPoules ? "Poules tirées" : "Tableau tiré",
-                "Têtes de série selon le classement. Les joueurs sont prévenus.",
+                prepare ? "Tirage refait par classement" : `${enPoules ? "Poules préparées" : "Arbre préparé"} par classement`,
+                "Têtes de série selon le classement. Brouillon jusqu'au lancement.",
               )
             }
           >
-            Par classement
+            {prepare ? "Refaire par classement" : "Par classement"}
           </Bouton>
+          {prepare && acceptes < 2 ? (
+            <span className="text-[12px] text-muted">Le lancement attend un 2ᵉ joueur retenu.</span>
+          ) : null}
+          {prepare && acceptes >= 2 ? (
+            <Bouton
+              accent
+              pending={pending}
+              onClick={() => {
+                if (!window.confirm(`Lancer le tournoi ? ${objet[0].toUpperCase() + objet.slice(1)} se fige${enPoules ? "nt" : ""}, les places libres deviennent des exemptions et les ${acceptes} joueurs sont prévenus.`)) return;
+                faire(() => demarrerTournoi(id), "Tournoi lancé", "Les joueurs sont prévenus de leur place.");
+              }}
+            >
+              Lancer le tournoi · {acceptes} joueur{acceptes > 1 ? "s" : ""}
+            </Bouton>
+          ) : null}
         </>
       ) : null}
 
@@ -335,15 +357,18 @@ function Bouton({
 export function Placement({
   tournamentId,
   joueurs,
+  libres = [],
 }: {
   tournamentId: string;
   joueurs: { id: string; nom: string; place: string }[];
+  /** Tirage préparé : les places encore libres (« rang:5 », « poule:3 »). */
+  libres?: { valeur: string; libelle: string }[];
 }) {
   const { faire, pending } = useGeste();
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const options = [...joueurs].sort((x, y) => x.place.localeCompare(y.place, "fr", { numeric: true }) || x.nom.localeCompare(y.nom));
-  const choix = (valeur: string, poser: (v: string) => void, libelle: string) => (
+  const choix = (valeur: string, poser: (v: string) => void, libelle: string, avecLibres = false) => (
     <label className="flex min-w-0 grow flex-col gap-1">
       <span className="text-[10.5px] tracking-[0.1em] text-muted uppercase">{libelle}</span>
       <select
@@ -357,21 +382,39 @@ export function Placement({
             {j.place} · {j.nom}
           </option>
         ))}
+        {avecLibres && libres.length ? (
+          <optgroup label="Places libres">
+            {libres.map((l) => (
+              <option key={l.valeur} value={l.valeur}>
+                {l.libelle}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
       </select>
     </label>
   );
   return (
     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
       {choix(a, setA, "Joueur")}
-      {choix(b, setB, "Échange avec")}
+      {choix(b, setB, libres.length ? "Échange avec, ou place libre" : "Échange avec", true)}
       <Bouton
         accent
         pending={pending}
-        onClick={() =>
-          faire(() => echangerPlaces(tournamentId, a, b), "Places échangées", "Les duels suivent les joueurs.")
-        }
+        onClick={() => {
+          const [genre, n] = b.split(":");
+          if (genre === "rang" || genre === "poule") {
+            faire(
+              () => placerSurPlaceLibre(tournamentId, a, genre === "rang" ? { rang: Number(n) } : { poule: Number(n) }),
+              "Joueur placé",
+              "Sa place précédente est libérée.",
+            );
+            return;
+          }
+          faire(() => echangerPlaces(tournamentId, a, b), "Places échangées", "Les duels suivent les joueurs.");
+        }}
       >
-        Échanger
+        {b.startsWith("rang:") || b.startsWith("poule:") ? "Placer" : "Échanger"}
       </Bouton>
     </div>
   );

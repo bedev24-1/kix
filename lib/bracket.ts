@@ -66,13 +66,16 @@ export function ordreDesRangs(taille: number): number[] {
  * tête de série n°1. Un duel dont l'adversaire est absent est une exemption,
  * et son `b` vaut `null`.
  */
-export function premierTour(joueurs: string[]): Duel[] {
-  const taille = taillePlateau(joueurs.length);
+export function premierTour(joueurs: (string | null)[], taille = taillePlateau(joueurs.length)): Duel[] {
   if (taille < 2) return [];
 
+  // Un tableau préparé avant la fin des inscriptions a des rangs encore libres :
+  // `null` à leur place, et une taille fixée d'avance (les 16 places prévues).
   const ordre = ordreDesRangs(taille);
-  const place = (rang: number): Place =>
-    rang <= joueurs.length ? { seed: rang, playerId: joueurs[rang - 1] } : null;
+  const place = (rang: number): Place => {
+    const id = joueurs[rang - 1];
+    return id ? { seed: rang, playerId: id } : null;
+  };
 
   const duels: Duel[] = [];
   for (let i = 0; i < taille; i += 2) {
@@ -88,12 +91,11 @@ export function premierTour(joueurs: string[]): Duel[] {
  * et à mesure des résultats. Les créer tout de suite permet d'afficher l'arbre
  * complet dès l'ouverture — on voit où mène chaque victoire.
  */
-export function plateauComplet(joueurs: string[]): Duel[] {
-  const taille = taillePlateau(joueurs.length);
+export function plateauComplet(joueurs: (string | null)[], taille = taillePlateau(joueurs.length)): Duel[] {
   if (taille < 2) return [];
 
-  const duels = premierTour(joueurs);
-  for (let round = 2; round <= nombreDeTours(joueurs.length); round++) {
+  const duels = premierTour(joueurs, taille);
+  for (let round = 2; round <= nombreDeTours(taille); round++) {
     const combien = taille / 2 ** round;
     for (let slot = 0; slot < combien; slot++) {
       duels.push({ round, slot, a: null, b: null });

@@ -296,12 +296,22 @@ export async function ouvrirLeTableau(
 /**
  * La phase finale, entre des joueurs donnés dans l'ordre des têtes de série :
  * simple élimination, ou double (tableau des perdants et grande finale).
+ *
+ * `brouillon` : l'arbre préparé avant le lancement. Il a sa taille prévue et
+ * des rangs encore libres (`null`) ; rien ne s'y résout, puisque les places
+ * vides attendent encore des joueurs et non des exemptions.
  */
-async function creerPhaseFinale(db: Db, t: typeof tournaments.$inferSelect, classes: string[]): Promise<number> {
-  const tours = nombreDeTours(classes.length);
+async function creerPhaseFinale(
+  db: Db,
+  t: typeof tournaments.$inferSelect,
+  classes: (string | null)[],
+  brouillon?: { taille: number },
+): Promise<number> {
+  const taille = brouillon?.taille ?? taillePlateau(classes.length);
+  const tours = nombreDeTours(taille);
 
   if (t.elimination !== "double") {
-    const duels = plateauComplet(classes);
+    const duels = plateauComplet(classes, taille);
     await db.insert(tournamentMatches).values(
       duels.map((d) => ({
         id: uid(),
@@ -318,11 +328,11 @@ async function creerPhaseFinale(db: Db, t: typeof tournaments.$inferSelect, clas
     );
     // Les exemptions se résolvent tout de suite : un joueur seul face à personne
     // a gagné, et son adversaire du tour suivant doit pouvoir l'apprendre.
-    await resoudreExemptions(db, t.id);
+    if (!brouillon) await resoudreExemptions(db, t.id);
     return duels.length;
   }
 
-  const noeuds = plateauDouble(classes);
+  const noeuds = plateauDouble(classes, taille);
   const ids = new Map(noeuds.map((n) => [n.cle, uid()]));
   const course = (n: (typeof noeuds)[number]) =>
     n.stage === "tableau" ? courseDuTour(n.round, tours, t.raceTo) : n.stage === "finale" ? courseDuTour(tours, tours, t.raceTo) : t.raceTo;
@@ -336,8 +346,8 @@ async function creerPhaseFinale(db: Db, t: typeof tournaments.$inferSelect, clas
       slot: n.slot,
       playerAId: n.a?.playerId ?? null,
       playerBId: n.b?.playerId ?? null,
-      videA: n.videA,
-      videB: n.videB,
+      videA: brouillon ? false : n.videA,
+      videB: brouillon ? false : n.videB,
       versGagnant: n.versGagnant ? ids.get(n.versGagnant.cle)! : null,
       coteGagnant: n.versGagnant?.cote ?? null,
       versPerdant: n.versPerdant ? ids.get(n.versPerdant.cle)! : null,
@@ -348,8 +358,252 @@ async function creerPhaseFinale(db: Db, t: typeof tournaments.$inferSelect, clas
   );
   // Les exemptions du premier tour descendent par les fils, jusque dans le
   // tableau des perdants.
-  for (const n of noeuds) if (n.stage === "tableau" && n.round === 1) await resoudreDuel(db, ids.get(n.cle)!);
+  if (!brouillon) for (const n of noeuds) if (n.stage === "tableau" && n.round === 1) await resoudreDuel(db, ids.get(n.cle)!);
   return noeuds.length;
+}
+
+/* ---------------------------------------------------------- préparation */
+
+/*
+ * Préparer le tirage avant la fin des inscriptions.
+ *
+ * L'organisateur construit l'arbre ou les poules dès le premier joueur
+ * retenu, réglé ou non : il voit son tableau prendre forme. Le tournoi reste
+ * ouvert aux candidatures ; chaque joueur retenu ensuite prend la première
+ * place libre, et un joueur qui part libère la sienne. Rien ne se joue tant
+ * que l'organisateur n'a pas lancé le tournoi : c'est le lancement qui fige
+ * l'arbre et règle les exemptions.
+ */
+
+const fige = (status: string) => status === "encours" || status === "termine" || status === "annule";
+
+/** La puissance de deux d'au moins `n`, et au moins 2 : la taille d'un arbre. */
+const puissance = (n: number) => Math.max(2, taillePlateau(Math.max(2, n)));
+
+async function lesRetenus(db: Db, tournamentId: string) {
+  return db
+    .select({ player: tournamentPlayers, points: users.points })
+    .from(tournamentPlayers)
+    .innerJoin(users, eq(users.id, tournamentPlayers.userId))
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")))
+    .orderBy(desc(users.points), asc(tournamentPlayers.createdAt));
+}
+
+/** Un tirage est-il préparé (des duels existent) sans que le tournoi soit lancé ? */
+export async function tiragePrepare(db: Db, tournamentId: string): Promise<boolean> {
+  const t = (await db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t || fige(t.status)) return false;
+  const un = await db.select({ id: tournamentMatches.id }).from(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournamentId)).limit(1);
+  if (un.length) return true;
+  // Une poule d'un seul joueur n'a pas encore de duel : sa place suffit.
+  const place = await db
+    .select({ id: tournamentPlayers.id })
+    .from(tournamentPlayers)
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte"), sql`${tournamentPlayers.seed} is not null`))
+    .limit(1);
+  return place.length > 0;
+}
+
+/** Les duels de toutes les poules, refaits d'après qui est dans quelle poule. Rien n'est joué avant le lancement. */
+async function refairePoules(db: Db, t: typeof tournaments.$inferSelect) {
+  const membres = await db
+    .select({ id: tournamentPlayers.id, groupe: tournamentPlayers.groupe })
+    .from(tournamentPlayers)
+    .where(and(eq(tournamentPlayers.tournamentId, t.id), eq(tournamentPlayers.status, "accepte")))
+    .orderBy(asc(tournamentPlayers.seed));
+  await db.delete(tournamentMatches).where(eq(tournamentMatches.tournamentId, t.id));
+  const groupes = [...new Set(membres.map((m) => m.groupe).filter((g): g is number => g !== null))].sort((a, b) => a - b);
+  const duels: (typeof tournamentMatches.$inferInsert)[] = [];
+  for (const g of groupes) {
+    for (const d of duelsDeLaPoule(g, membres.filter((m) => m.groupe === g).map((m) => m.id))) {
+      duels.push({ id: uid(), tournamentId: t.id, stage: "poule", groupe: g, round: 1, slot: d.slot, playerAId: d.a, playerBId: d.b, raceTo: t.raceTo, status: "attente" });
+    }
+  }
+  if (duels.length) await db.insert(tournamentMatches).values(duels);
+  return duels.length;
+}
+
+/** L'arbre préparé, refait d'après les rangs (têtes de série) déjà posés. */
+async function refaireArbre(db: Db, t: typeof tournaments.$inferSelect) {
+  const places = await db
+    .select({ id: tournamentPlayers.id, seed: tournamentPlayers.seed })
+    .from(tournamentPlayers)
+    .where(and(eq(tournamentPlayers.tournamentId, t.id), eq(tournamentPlayers.status, "accepte")));
+  const plusHaut = Math.max(0, ...places.map((p) => p.seed ?? 0));
+  const taille = Math.max(puissance(t.size), puissance(plusHaut));
+  const parRang: (string | null)[] = Array.from({ length: taille }, () => null);
+  for (const p of places) if (p.seed) parRang[p.seed - 1] = p.id;
+  await db.delete(tournamentMatches).where(eq(tournamentMatches.tournamentId, t.id));
+  const n = await creerPhaseFinale(db, t, parRang, { taille });
+  if (taille !== t.size) await db.update(tournaments).set({ size: taille }).where(eq(tournaments.id, t.id));
+  return n;
+}
+
+/** Le nombre de poules prévu : d'après la taille annoncée, ou les retenus s'ils sont plus nombreux. */
+const poulesPrevues = (t: typeof tournaments.$inferSelect, retenus: number) =>
+  Math.max(1, nombreDePoules(Math.max(retenus, t.size, 2), Math.max(2, t.groupSize)));
+
+/**
+ * Préparer (ou refaire) le tirage : arbre ou poules, dès un joueur retenu.
+ * Les joueurs retenus mais pas encore réglés y ont leur place.
+ */
+export async function preparerLeTirage(
+  db: Db,
+  tournamentId: string,
+  mode: ModeDeTirage = "classement",
+): Promise<{ ok: true; places: number; poules?: number } | { ok: false; error: string }> {
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return { ok: false, error: "Tournoi introuvable." };
+  if (fige(t.status)) return { ok: false, error: t.status === "annule" ? "Le tournoi est annulé." : "Le tournoi est lancé : son tirage ne se refait plus." };
+
+  const tous = await lesRetenus(db, tournamentId);
+  if (!tous.length) return { ok: false, error: "Retiens au moins un joueur pour préparer le tirage." };
+  const classes = (mode === "hasard" ? melanger(tous) : tous).map((r) => r.player.id);
+
+  if (t.format === "poules") {
+    const poules = repartirEnPoules(classes, poulesPrevues(t, classes.length));
+    await db.update(tournamentPlayers).set({ seed: null, groupe: null }).where(eq(tournamentPlayers.tournamentId, tournamentId));
+    for (const [i, membres] of poules.entries()) {
+      for (const id of membres) {
+        await db.update(tournamentPlayers).set({ seed: classes.indexOf(id) + 1, groupe: i + 1 }).where(eq(tournamentPlayers.id, id));
+      }
+    }
+    await refairePoules(db, t);
+    return { ok: true, places: classes.length, poules: poules.length };
+  }
+
+  await db.update(tournamentPlayers).set({ seed: null, groupe: null }).where(eq(tournamentPlayers.tournamentId, tournamentId));
+  await Promise.all(classes.map((id, i) => db.update(tournamentPlayers).set({ seed: i + 1 }).where(eq(tournamentPlayers.id, id))));
+  await refaireArbre(db, t);
+  return { ok: true, places: classes.length };
+}
+
+/**
+ * Les retenus ont changé alors que le tirage est préparé : on suit.
+ * Un nouveau prend la première place libre (le plus petit rang libre sur
+ * l'arbre, la poule la moins remplie) ; celui qui part libère la sienne.
+ * Sans effet si rien n'est préparé, ou si le tournoi est lancé.
+ */
+export async function suivreLesRetenus(db: Db, tournamentId: string): Promise<{ place?: string } | null> {
+  if (!(await tiragePrepare(db, tournamentId))) return null;
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return null;
+
+  // Ceux qui ne sont plus retenus quittent leur place.
+  await db
+    .update(tournamentPlayers)
+    .set({ seed: null, groupe: null })
+    .where(and(eq(tournamentPlayers.tournamentId, tournamentId), sql`${tournamentPlayers.status} <> 'accepte'`));
+
+  const retenus = await lesRetenus(db, tournamentId);
+  const nouveaux = retenus.filter((r) => r.player.seed === null).map((r) => r.player.id);
+  const pris = new Set(retenus.map((r) => r.player.seed).filter((s): s is number => s !== null));
+  let place: string | undefined;
+
+  if (t.format === "poules") {
+    const nb = Math.max(poulesPrevues(t, retenus.length), ...retenus.map((r) => r.player.groupe ?? 0));
+    const effectif = new Map<number, number>(Array.from({ length: nb }, (_, i) => [i + 1, 0]));
+    for (const r of retenus) if (r.player.groupe) effectif.set(r.player.groupe, (effectif.get(r.player.groupe) ?? 0) + 1);
+    let rang = 0;
+    for (const id of nouveaux) {
+      while (pris.has(++rang));
+      pris.add(rang);
+      const groupe = [...effectif.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0])[0][0];
+      effectif.set(groupe, effectif.get(groupe)! + 1);
+      await db.update(tournamentPlayers).set({ seed: rang, groupe }).where(eq(tournamentPlayers.id, id));
+      place = `poule ${String.fromCharCode(64 + groupe)}`;
+    }
+    await refairePoules(db, t);
+    return { place };
+  }
+
+  let rang = 0;
+  for (const id of nouveaux) {
+    while (pris.has(++rang));
+    pris.add(rang);
+    await db.update(tournamentPlayers).set({ seed: rang }).where(eq(tournamentPlayers.id, id));
+    place = `tête de série n°${rang}`;
+  }
+  await refaireArbre(db, t);
+  return { place };
+}
+
+/**
+ * Tirage préparé : poser un joueur sur une place libre — un rang de l'arbre,
+ * ou une poule — plutôt que de l'échanger avec un autre.
+ */
+export async function deplacerVersPlaceLibre(
+  db: Db,
+  tournamentId: string,
+  joueurId: string,
+  place: { rang?: number; poule?: number },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await tiragePrepare(db, tournamentId))) return { ok: false, error: "Une fois le tournoi lancé, on échange deux joueurs ; on ne vide plus de place." };
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  const j = (await db.select().from(tournamentPlayers).where(and(eq(tournamentPlayers.id, joueurId), eq(tournamentPlayers.tournamentId, tournamentId))).limit(1))[0];
+  if (!t || !j || j.status !== "accepte") return { ok: false, error: "Joueur introuvable dans ce tableau." };
+
+  if (t.format === "poules") {
+    if (!place.poule || place.poule < 1) return { ok: false, error: "Choisis une poule." };
+    await db.update(tournamentPlayers).set({ groupe: place.poule }).where(eq(tournamentPlayers.id, j.id));
+    await refairePoules(db, t);
+    return { ok: true };
+  }
+  const rang = place.rang ?? 0;
+  if (rang < 1 || rang > t.size) return { ok: false, error: "Cette place n'existe pas sur l'arbre." };
+  const occupe = (
+    await db.select({ id: tournamentPlayers.id }).from(tournamentPlayers)
+      .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte"), eq(tournamentPlayers.seed, rang))).limit(1)
+  )[0];
+  if (occupe && occupe.id !== j.id) return { ok: false, error: "Cette place est prise : échange plutôt les deux joueurs." };
+  await db.update(tournamentPlayers).set({ seed: rang }).where(eq(tournamentPlayers.id, j.id));
+  await refaireArbre(db, t);
+  return { ok: true };
+}
+
+/**
+ * Lancer le tournoi préparé : l'arbre se fige à la taille juste (les places
+ * restées libres deviennent des exemptions, accordées aux meilleurs rangs),
+ * les poules se resserrent s'il en reste de vides ou d'incomplètes.
+ */
+export async function lancerLeTournoi(
+  db: Db,
+  tournamentId: string,
+): Promise<{ ok: true; joueurs: number; resserre: boolean } | { ok: false; error: string }> {
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return { ok: false, error: "Tournoi introuvable." };
+  if (fige(t.status)) return { ok: false, error: "Le tournoi est déjà lancé." };
+  if (!(await tiragePrepare(db, tournamentId))) return { ok: false, error: "Prépare d'abord le tirage." };
+
+  const retenus = (await lesRetenus(db, tournamentId)).sort((a, b) => (a.player.seed ?? 1e9) - (b.player.seed ?? 1e9));
+  if (retenus.length < 2) return { ok: false, error: "Il faut au moins deux joueurs retenus pour lancer le tournoi." };
+  const classes = retenus.map((r) => r.player.id);
+  // Les rangs se resserrent (1, 2, 4 → 1, 2, 3) : l'ordre, lui, ne bouge pas.
+  await Promise.all(classes.map((id, i) => db.update(tournamentPlayers).set({ seed: i + 1 }).where(eq(tournamentPlayers.id, id))));
+
+  let resserre = false;
+  if (t.format === "poules") {
+    const effectifs = new Map<number, number>();
+    for (const r of retenus) if (r.player.groupe) effectifs.set(r.player.groupe, (effectifs.get(r.player.groupe) ?? 0) + 1);
+    const nb = nombreDePoules(classes.length, Math.max(2, t.groupSize));
+    const bancal = retenus.some((r) => !r.player.groupe) || [...effectifs.values()].some((n) => n < 2);
+    if (bancal) {
+      resserre = true;
+      const poules = repartirEnPoules(classes, nb);
+      for (const [i, membres] of poules.entries()) {
+        for (const id of membres) await db.update(tournamentPlayers).set({ groupe: i + 1 }).where(eq(tournamentPlayers.id, id));
+      }
+    }
+    await refairePoules(db, t);
+  } else {
+    resserre = taillePlateau(classes.length) < t.size;
+    await db.delete(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournamentId));
+    await creerPhaseFinale(db, t, classes);
+    await db.update(tournaments).set({ size: taillePlateau(classes.length) }).where(eq(tournaments.id, tournamentId));
+  }
+
+  await db.update(tournaments).set({ status: "encours" }).where(eq(tournaments.id, tournamentId));
+  return { ok: true, joueurs: classes.length, resserre };
 }
 
 /** Poser un joueur — ou une absence — sur un côté d'un duel, puis voir si ce duel se résout seul. */
@@ -505,6 +759,8 @@ export async function noterResultat(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const d = (await db.select().from(tournamentMatches).where(eq(tournamentMatches.id, duelId)).limit(1))[0];
   if (!d) return { ok: false, error: "Duel introuvable." };
+  const etat = (await db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, d.tournamentId)).limit(1))[0];
+  if (etat?.status !== "encours") return { ok: false, error: "Le tournoi n'est pas lancé : le tirage n'est encore que préparé." };
   if (!d.playerAId || !d.playerBId) return { ok: false, error: "Ce duel attend encore ses deux joueurs." };
   if (scoreA === scoreB) return { ok: false, error: "Un duel ne peut pas finir à égalité." };
   if (Math.max(scoreA, scoreB) < d.raceTo) {

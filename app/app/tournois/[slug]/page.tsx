@@ -44,7 +44,7 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
 
   const { tournament: t, venue } = lu;
 
-  const [joueurs, duels, poules, noms, mienne, billet, aArbitrer] = await Promise.all([
+  const [joueurs, duelsTires, poulesTirees, noms, mienne, billet, aArbitrer] = await Promise.all([
     getPlayers(t.id),
     getBracket(t.id),
     t.format === "poules" ? getDuelsDePoule(t.id) : Promise.resolve([]),
@@ -77,6 +77,10 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
     ? (await db.select().from(events).where(eq(events.id, t.eventId)).limit(1))[0]
     : undefined;
 
+  // Un tirage préparé mais pas lancé reste le brouillon de l'organisateur.
+  const lance = t.status === "encours" || t.status === "termine";
+  const duels = lance ? duelsTires : [];
+  const poules = lance ? poulesTirees : [];
   const retenus = joueurs.filter((j) => j.player.status === "accepte");
   const principal = duels.filter((d) => d.stage === "tableau");
   const tours = principal.length ? Math.max(...principal.map((d) => d.round)) : nombreDeTours(retenus.length);
@@ -86,7 +90,7 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
         status: mienne.status,
         payment: mienne.payment,
         fee: mienne.fee,
-        seed: mienne.seed,
+        seed: lance ? mienne.seed : null,
         nickname: mienne.nickname,
         level: mienne.level,
       }
@@ -273,7 +277,7 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
                   <Link key={player.id} href={`/app/joueurs/${joueur.id}`} className="press block">
                   <Card shape="panel" className="flex items-center gap-3 px-3.5 py-3">
                     <span className="w-8 shrink-0 text-[12px] text-faint tabular-nums">
-                      {player.seed ? `#${player.seed}` : "—"}
+                      {lance && player.seed ? `#${player.seed}` : "—"}
                     </span>
                     <span className="flex min-w-0 grow flex-col gap-0.5">
                       <span className="truncate text-[13.5px] font-semibold">

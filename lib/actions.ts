@@ -2727,6 +2727,9 @@ export async function retirerCandidature(tournamentId: string) {
     .update(tournamentPlayers)
     .set({ status: "retire" })
     .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.userId, user.id)));
+  // Un tirage déjà préparé libère sa place.
+  const { suivreLesRetenus } = await import("@/lib/tournaments");
+  await suivreLesRetenus(tournamentId);
 
   revalidatePath(`/app/tournois/${t.slug}`);
   revalidatePath("/gerant/tournois");
@@ -2758,13 +2761,16 @@ export async function deciderCandidat(playerId: string, decision: "accepte" | "r
   }
 
   await db.update(tournamentPlayers).set({ status: decision }).where(eq(tournamentPlayers.id, playerId));
+  // Tirage déjà préparé : le retenu prend la première place libre, l'écarté libère la sienne.
+  const { suivreLesRetenus } = await import("@/lib/tournaments");
+  const suivi = await suivreLesRetenus(t.id);
 
   await notify(
     ligne.userId,
     decision === "accepte" ? `Retenu · ${t.title}` : `Non retenu · ${t.title}`,
     decision === "accepte"
       ? t.entryFee > 0
-        ? `Règle ton droit d'inscription de ${t.entryFee.toLocaleString("fr-FR")} F pour prendre ta place au tableau.`
+        ? `Ta place au tableau est retenue. Règle ton droit d'inscription de ${t.entryFee.toLocaleString("fr-FR")} F avant le début.`
         : "Ta place au tableau est retenue."
       : "Le tableau est complet pour cette édition. Retente à la prochaine.",
     "event",
@@ -2774,7 +2780,7 @@ export async function deciderCandidat(playerId: string, decision: "accepte" | "r
   revalidatePath(`/app/tournois/${t.slug}`);
   revalidatePath("/gerant/tournois");
   revalidatePath("/admin/tournois");
-  return { ok: true as const };
+  return { ok: true as const, place: suivi?.place };
 }
 
 /** Le droit d'inscription, par le même chemin de paiement que le reste. */
@@ -2883,36 +2889,52 @@ export async function encaisserAuGuichet(playerId: string) {
   return { ok: true as const };
 }
 
-/** Le tirage : les candidatures deviennent un tableau. */
+/**
+ * Préparer (ou refaire) le tirage : l'arbre ou les poules se construisent dès
+ * un joueur retenu, réglé ou non, et suivent ensuite les retenus. Personne
+ * n'est prévenu : c'est un brouillon, jusqu'au lancement.
+ */
 export async function lancerTableau(tournamentId: string, mode: "classement" | "hasard" = "classement") {
-  const auteur = await requireRole("admin", "manager");
-  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
-  if (!t) return { ok: false as const, error: "Tournoi introuvable." };
-  if (auteur.role === "manager" && t.venueId !== auteur.venueId) redirect("/gerant?refus=1");
+  const o = await organisateurDe(tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+  const { preparerLeTirage } = await import("@/lib/tournaments");
+  const res = await preparerLeTirage(tournamentId, mode === "hasard" ? "hasard" : "classement");
+  if (res.ok) revaliderTournoi(o.t.slug);
+  return res;
+}
 
-  const { tirerLeTableau, tirerLesPoules } = await import("@/lib/tournaments");
-  const tirage = mode === "hasard" ? "hasard" : "classement";
-  const res =
-    t.format === "poules" ? await tirerLesPoules(tournamentId, tirage) : await tirerLeTableau(tournamentId, tirage);
+/** Lancer le tournoi préparé : l'arbre se fige, les exemptions tombent, les joueurs sont prévenus. */
+export async function demarrerTournoi(tournamentId: string) {
+  const o = await organisateurDe(tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+  const { lancerLeTournoi } = await import("@/lib/tournaments");
+  const res = await lancerLeTournoi(tournamentId);
   if (!res.ok) return res;
+  const t = o.t;
 
   const joueurs = await db
     .select()
     .from(tournamentPlayers)
     .where(and(eq(tournamentPlayers.tournamentId, tournamentId), eq(tournamentPlayers.status, "accepte")));
-
   for (const j of joueurs) {
     if (j.seed === null) continue;
     const place =
       t.format === "poules" && j.groupe
         ? `Tu es dans la poule ${String.fromCharCode(64 + j.groupe)}, tête de série n°${j.seed}.`
         : `Tu entres en tête de série n°${j.seed}.`;
-    await notify(j.userId, `Tirage · ${t.title}`, `${place} Le programme est en ligne.`, "event", `/app/tournois/${t.slug}`);
+    await notify(j.userId, `C'est parti · ${t.title}`, `${place} Le programme est en ligne.`, "event", `/app/tournois/${t.slug}`);
   }
+  revaliderTournoi(t.slug);
+  return res;
+}
 
-  revalidatePath(`/app/tournois/${t.slug}`);
-  revalidatePath("/gerant/tournois");
-  revalidatePath("/admin/tournois");
+/** Tirage préparé : poser un joueur sur une place libre (rang de l'arbre ou poule). */
+export async function placerSurPlaceLibre(tournamentId: string, joueurId: string, place: { rang?: number; poule?: number }) {
+  const o = await organisateurDe(tournamentId);
+  if (!o) return { ok: false as const, error: "Tournoi introuvable." };
+  const { deplacerVersPlaceLibre } = await import("@/lib/tournaments");
+  const res = await deplacerVersPlaceLibre(tournamentId, joueurId, place);
+  if (res.ok) revaliderTournoi(o.t.slug);
   return res;
 }
 
