@@ -2475,7 +2475,12 @@ export async function saveTournament(formData: FormData) {
   if (parent && auteur.role === "manager" && parent.venueId !== auteur.venueId) redirect("/gerant?refus=1");
 
   const tournoiId = id || repris?.id || uid();
-  if (id) await db.update(tournaments).set(values).where(eq(tournaments.id, id));
+  if (id) {
+    await db.update(tournaments).set(values).where(eq(tournaments.id, id));
+    // Un tirage préparé suit les réglages : simple ou double, taille, format.
+    const { rafraichirLeTirage } = await import("@/lib/tournaments");
+    await rafraichirLeTirage(id);
+  }
   else if (!repris) {
     await db.insert(tournaments).values({
       ...values,

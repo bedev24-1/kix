@@ -16,9 +16,21 @@ export const DISCIPLINES: Record<string, string> = {
 
 /** Comment se joue un tournoi. */
 export const FORMATS: Record<string, string> = {
-  direct: "Élimination directe",
+  direct: "Tableau direct, sans poules",
   poules: "Poules puis tableau",
 };
+
+/** La phase finale : un seul revers élimine, ou un tableau des perdants offre une seconde chance. */
+export const ELIMINATIONS: Record<string, string> = {
+  simple: "Élimination simple",
+  double: "Double élimination",
+};
+
+/** Comment le tournoi se joue, en clair : « Élimination simple », « Poules puis double élimination ». */
+export function formule(t: { format: string; elimination: string }): string {
+  const fin = ELIMINATIONS[t.elimination] ?? ELIMINATIONS.simple;
+  return t.format === "poules" ? `Poules puis ${fin.toLowerCase()}` : fin;
+}
 
 /**
  * Pour qui le tableau est ouvert. Un même événement peut en porter plusieurs

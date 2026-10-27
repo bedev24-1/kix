@@ -529,6 +529,28 @@ export async function suivreLesRetenus(db: Db, tournamentId: string): Promise<{ 
 }
 
 /**
+ * Les réglages du tournoi ont changé (phase finale simple ou double, taille,
+ * format) alors que le tirage est préparé : on le reconstruit tel quel, les
+ * joueurs gardant leur rang. Sans effet si rien n'est préparé, ou une fois lancé.
+ */
+export async function rafraichirLeTirage(db: Db, tournamentId: string): Promise<void> {
+  if (!(await tiragePrepare(db, tournamentId))) return;
+  const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
+  if (!t) return;
+  if (t.format === "poules") {
+    const places = await lesRetenus(db, tournamentId);
+    // Passé d'un arbre aux poules : personne n'a encore de poule, on les tire.
+    if (!places.some((r) => r.player.groupe)) {
+      await preparerLeTirage(db, tournamentId, "classement");
+      return;
+    }
+    await refairePoules(db, t);
+    return;
+  }
+  await refaireArbre(db, t);
+}
+
+/**
  * Tirage préparé : poser un joueur sur une place libre — un rang de l'arbre,
  * ou une poule — plutôt que de l'échanger avec un autre.
  */

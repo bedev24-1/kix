@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ArrowRightIcon, TrophyIcon } from "@/components/icons";
 import { saveTournament } from "@/lib/actions";
-import { CATEGORIES, DISCIPLINES, ETATS, FORMATS, TAILLE_MAX, TAILLES } from "@/lib/tournois";
+import { CATEGORIES, DISCIPLINES, ETATS, FORMATS, TAILLE_MAX, TAILLES, formule } from "@/lib/tournois";
 import { modeDuJeu, MODES_OPTIONS } from "@/lib/regles";
 import { NIVEAUX_REQUIS } from "@/lib/niveaux";
 import { CAGNOTTES_MAX } from "@/lib/cagnottes";
@@ -351,7 +351,7 @@ export function ListeTournois({ lignes, base }: { lignes: LigneTournoi[]; base: 
               <span className="truncate text-[15px] font-semibold">{tournament.title}</span>
               <span className="truncate text-[12px] text-muted">
                 {DISCIPLINES[tournament.discipline] ?? tournament.discipline} ·{" "}
-                {FORMATS[tournament.format] ?? tournament.format}
+                {formule(tournament)}
                 {venue ? ` · ${venue.name}` : ""}
               </span>
               <span className="text-[12px] text-gold-text">

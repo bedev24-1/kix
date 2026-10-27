@@ -73,6 +73,7 @@ export const preparerLeTirage = (tournamentId: string, mode?: moteur.ModeDeTirag
 export const suivreLesRetenus = (tournamentId: string) => moteur.suivreLesRetenus(db, tournamentId);
 export const lancerLeTournoi = (tournamentId: string) => moteur.lancerLeTournoi(db, tournamentId);
 export const tiragePrepare = (tournamentId: string) => moteur.tiragePrepare(db, tournamentId);
+export const rafraichirLeTirage = (tournamentId: string) => moteur.rafraichirLeTirage(db, tournamentId);
 export const deplacerVersPlaceLibre = (tournamentId: string, joueurId: string, place: { rang?: number; poule?: number }) =>
   moteur.deplacerVersPlaceLibre(db, tournamentId, joueurId, place);
 

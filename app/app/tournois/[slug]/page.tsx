@@ -23,7 +23,7 @@ import {
   nomsDuTableau,
 } from "@/lib/tournaments";
 import { programme } from "@/lib/tournoi-vues";
-import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
+import { CANDIDATURES, DISCIPLINES, ETATS, NIVEAUX, formule } from "@/lib/tournois";
 import { nomDuJeu, regleDuJeu } from "@/lib/regles";
 import { exigenceDuTournoi, ilManque, niveauDe } from "@/lib/niveaux";
 import { requireUser } from "@/lib/session";
@@ -130,7 +130,7 @@ export default async function TournoiPage({ params }: { params: Promise<{ slug: 
               {ETATS[t.status] ?? t.status}
             </Chip>
             <Chip tone="neutral" className="px-2.5 py-1 text-[10px] tracking-[0.06em] uppercase">
-              {FORMATS[t.format] ?? t.format}
+              {formule(t)}
             </Chip>
             {/* Comment se joue un duel : c'est la première question d'un
                 joueur qui lit l'affiche, avant même la dotation. */}

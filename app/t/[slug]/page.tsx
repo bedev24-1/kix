@@ -8,7 +8,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, events, tournamentPlayers, users } from "@/db";
 import { Photo } from "@/components/ui/Photo";
 import { getTournament } from "@/lib/tournaments";
-import { CATEGORIES, DISCIPLINES, FORMATS } from "@/lib/tournois";
+import { CATEGORIES, DISCIPLINES, formule } from "@/lib/tournois";
 import { metadonneesApercu, prixLisible } from "@/lib/apercu";
 
 /**
@@ -32,7 +32,7 @@ function resume(t: NonNullable<Awaited<ReturnType<typeof charger>>>["t"]) {
       ? `${DISCIPLINES[t.discipline] ?? t.discipline} · ${t.placesHommes} hommes + ${t.placesDames} femmes`
       : `${DISCIPLINES[t.discipline] ?? t.discipline} · ${t.size} joueurs`,
     t.category !== "open" ? CATEGORIES[t.category] : null,
-    FORMATS[t.format] ?? null,
+    formule(t),
     t.prizePool > 0 ? `Dotation ${t.prizePool.toLocaleString("fr-FR")} F` : null,
     t.entryFee > 0 ? `Inscription ${t.entryFee.toLocaleString("fr-FR")} F` : "Inscription gratuite",
   ]

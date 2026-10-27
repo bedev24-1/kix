@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 import { getTournament, duree } from "@/lib/tournaments";
 import { tableauEnDirect, type DuelVue, type GroupeVue, type Visage } from "@/lib/tournoi-direct";
 import { nomDuTour } from "@/lib/bracket";
-import { CATEGORIES, DISCIPLINES, FORMATS } from "@/lib/tournois";
+import { CATEGORIES, DISCIPLINES, formule } from "@/lib/tournois";
 import { urlPublique } from "@/lib/url-publique";
 import { getCurrentUser } from "@/lib/session";
 
@@ -148,7 +148,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
 
   const sousTitre = [
     DISCIPLINES[t.discipline] ?? t.discipline,
-    FORMATS[t.format] ?? t.format,
+    formule(t),
     t.category !== "open" ? (CATEGORIES[t.category] ?? t.category) : "",
     `${ligne.acceptes} joueur${Number(ligne.acceptes) > 1 ? "s" : ""}`,
   ].filter(Boolean);

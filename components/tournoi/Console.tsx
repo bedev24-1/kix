@@ -29,7 +29,7 @@ import {
 } from "@/lib/tournaments";
 import { nombreDePoules, nomDeLaPoule } from "@/lib/poules";
 import { arbitresActifs } from "@/lib/profils-db";
-import { CANDIDATURES, DISCIPLINES, ETATS, FORMATS, NIVEAUX } from "@/lib/tournois";
+import { CANDIDATURES, DISCIPLINES, ETATS, NIVEAUX, formule } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
 import { f } from "@/lib/format";
 import { db, events, matchOfficials, users } from "@/db";
@@ -160,7 +160,7 @@ export async function ConsoleTournoi({
         </Link>
         <h1 className="text-xl lg:text-[26px]">{tournoi.title}</h1>
         <p className="text-[13px] text-muted">
-          {DISCIPLINES[tournoi.discipline] ?? tournoi.discipline} · {FORMATS[tournoi.format] ?? tournoi.format}
+          {DISCIPLINES[tournoi.discipline] ?? tournoi.discipline} · {formule(tournoi)}
           {enPoules ? ` · poules de ${tournoi.groupSize}, ${tournoi.qualifiers} qualifiés` : ` · ${tournoi.size} places`} ·{" "}
           {duree(tournoi)}
           {venue ? ` · ${venue.name}` : ""}
