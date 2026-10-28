@@ -147,9 +147,36 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
       resource.current = response.headers.get("location");
       await pc.setRemoteDescription({ type: "answer", sdp: await response.text() });
 
+      // Une réponse du serveur ne prouve pas que la vidéo passe : il faut que
+      // la liaison WebRTC s'établisse vraiment. Avant, on affichait « EN DIRECT »
+      // dès la réponse — le téléphone montrait son aperçu local pendant que
+      // personne ne recevait rien (port UDP fermé, réseau qui bloque).
+      const relie = await new Promise<boolean>((resolve) => {
+        if (pc.connectionState === "connected") return resolve(true);
+        const fini = window.setTimeout(() => resolve(false), 15000);
+        pc.addEventListener("connectionstatechange", function suivre() {
+          if (pc.connectionState === "connected") {
+            window.clearTimeout(fini);
+            pc.removeEventListener("connectionstatechange", suivre);
+            resolve(true);
+          } else if (pc.connectionState === "failed") {
+            window.clearTimeout(fini);
+            pc.removeEventListener("connectionstatechange", suivre);
+            resolve(false);
+          }
+        });
+      });
+      if (!relie) {
+        stop();
+        setPhase("error");
+        setError(
+          "La vidéo n'arrive pas jusqu'au serveur : le réseau bloque la liaison. Essaie en wifi, ou préviens l'équipe Master Break (port 8189 du serveur vidéo).",
+        );
+        return;
+      }
+
       pc.addEventListener("connectionstatechange", () => {
-        if (pc.connectionState === "connected") setPhase("live");
-        if (["failed", "disconnected", "closed"].includes(pc.connectionState) && phase === "live") {
+        if (["failed", "disconnected", "closed"].includes(pc.connectionState)) {
           setPhase("error");
           setError("Connexion perdue. Relance la diffusion.");
         }

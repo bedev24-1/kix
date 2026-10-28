@@ -5,7 +5,7 @@
 #
 # Avant de déployer, deux choses :
 #   · fais pointer media.vps.buyticle.com et whip.vps.buyticle.com sur le VPS ;
-#   · ouvre au pare-feu 1935/tcp, 8189/udp et 8890/udp.
+#   · ouvre au pare-feu 1935/tcp, 8189/udp, 8189/tcp et 8890/udp.
 #
 # Ne renseigne aucun domaine dans l'interface Coolify pour cette ressource :
 # les routes sont déjà décrites plus bas, en labels. Un domaine ajouté par
@@ -65,6 +65,9 @@ services:
       # Le média WebRTC lui-même, en UDP : sans ce port, la caméra d'un
       # téléphone négocie puis reste muette.
       - "8189:8189/udp"
+      # Le même en TCP : le secours quand un réseau (4G, wifi d'entreprise)
+      # bloque l'UDP. Sans lui, la liaison échoue et personne ne voit l'image.
+      - "8189:8189/tcp"
       # SRT, pour les liaisons instables (4G de salle). Facultatif.
       - "8890:8890/udp"
 
@@ -125,6 +128,7 @@ configs:
       # interne du conteneur et rien ne passe.
       webrtcAdditionalHosts: [whip.vps.buyticle.com]
       webrtcLocalUDPAddress: :8189
+      webrtcLocalTCPAddress: :8189
       webrtcICEServers2:
         - url: stun:stun.l.google.com:19302
 

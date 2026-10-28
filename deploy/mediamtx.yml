@@ -46,6 +46,7 @@ webrtcAddress: :8889
 webrtcAdditionalHosts: [whip.vps.buyticle.com]
 # Le média WebRTC passe en UDP : ce port doit être ouvert au pare-feu.
 webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
 webrtcICEServers2:
   - url: stun:stun.l.google.com:19302
 
