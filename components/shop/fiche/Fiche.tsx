@@ -184,22 +184,22 @@ export function Fiche({
         <span className="text-[15px] font-extrabold text-[#b9893b] tabular-nums">{f(prix)}</span>
       </div>
 
-      <div className="flex items-center justify-between">
-        <Link href="/app/shop" aria-label="Retour à la boutique" className="press grid h-10 w-10 place-items-center rounded-full border border-[#d8d2c3]">
+      {/* En-tête compact : la place va à la photo. */}
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/app/shop" aria-label="Retour à la boutique" className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#d8d2c3]">
           <ChevronLeftIcon size={18} />
         </Link>
-        <Link href="/app/panier" aria-label="Panier" className="press relative grid h-10 w-10 place-items-center rounded-full border border-[#d8d2c3]">
+        <span className="flex min-w-0 flex-col items-center leading-none">
+          <span className="text-[20px] font-extrabold tracking-[-0.01em] uppercase lg:text-[30px]">{rayon}</span>
+          <Link href="/app/shop" className="mt-1 text-[11px] text-[#b9893b]">
+            voir le rayon
+          </Link>
+        </span>
+        <Link href="/app/panier" aria-label="Panier" className="press relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#d8d2c3]">
           <CartIcon size={18} />
           {count > 0 ? (
             <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e0b43a] px-1 text-[10px] font-extrabold text-[#1a1405]">{count}</span>
           ) : null}
-        </Link>
-      </div>
-
-      <div className="mt-3 flex items-baseline justify-between">
-        <span className="text-[28px] leading-none font-extrabold tracking-[-0.01em] uppercase lg:text-[36px]">{rayon}</span>
-        <Link href="/app/shop" className="text-[12px] text-[#b9893b]">
-          voir le rayon
         </Link>
       </div>
 
@@ -241,20 +241,39 @@ export function Fiche({
             </div>
           ) : null}
 
-          <div ref={repere} className="mt-3.5 flex items-end justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="text-[19px] leading-[1.15] font-extrabold lg:text-[28px]">{produit.name}</h1>
-              {avis.total > 0 ? (
-                <a href="#avis" className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-[#b9893b]">
-                  <Etoiles note={avis.moyenne} taille={11} /> {avis.moyenne.toLocaleString("fr-FR")} · {avis.total} avis
-                </a>
-              ) : null}
+          {/* Le nom sur toute la largeur ; le prix face à la note et à l'accroche,
+              pour qu'il n'y ait pas de vide sous lui ; puis les infos qui
+              décident l'achat (stock, livraison, retrait). */}
+          <div ref={repere} className="mt-3">
+            <h1 className="text-[21px] leading-[1.12] font-extrabold lg:text-[30px]">{produit.name}</h1>
+            <div className="mt-1.5 flex items-end justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                {avis.total > 0 ? (
+                  <a href="#avis" className="flex items-center gap-1.5 text-[11.5px] font-bold text-[#b9893b]">
+                    <Etoiles note={avis.moyenne} taille={11} /> {avis.moyenne.toLocaleString("fr-FR")} · {avis.total} avis
+                  </a>
+                ) : (
+                  <span className="text-[11.5px] text-[#8a8f8b]">Pas encore d&apos;avis</span>
+                )}
+                {produit.detail ? <p className="line-clamp-2 text-[12.5px] leading-[1.35] text-[#58605b]">{produit.detail}</p> : null}
+              </div>
+              <span className="shrink-0 text-[32px] leading-none font-extrabold tracking-[-0.02em] whitespace-nowrap text-[#b9893b] tabular-nums lg:text-[44px]">
+                {f(prix)}
+              </span>
             </div>
-            <span className="shrink-0 text-[34px] leading-none font-extrabold tracking-[-0.02em] whitespace-nowrap text-[#b9893b] tabular-nums lg:text-[44px]">
-              {f(prix)}
-            </span>
+            <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+              <span className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1.5", epuise ? "bg-[#fbe9e7] text-[#c9463d]" : "bg-[#e3f1e8] text-[#2f8f5b]")}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {epuise ? "Rupture" : `${stock} en stock${choisie ? ` · ${choisie.name}` : ""}`}
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[#3d4440]">
+                <TruckIcon size={13} /> Livré ce soir · {f(livraison)}
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[#3d4440]">
+                <PinIcon size={13} /> Retrait 2 h
+              </span>
+            </div>
           </div>
-          {produit.detail ? <p className="mt-2 text-[13px] text-[#58605b]">{produit.detail}</p> : null}
 
           {/* Sur grand écran, pas de tiroir : les atouts et le bouton sont posés là. */}
           <div className="mt-6 hidden flex-col gap-5 rounded-[26px] bg-[#0e1512] p-6 text-[#f4efe2] lg:flex">
@@ -369,32 +388,34 @@ function Tiroir({ ouvert, onOuvert, children }: { ouvert: boolean; onOuvert: (v:
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] md:max-w-[46rem] lg:hidden">
+      {/* Le menu déroulé a la largeur et la hauteur du bouton d'achat, juste
+          au-dessus de lui ; la bulle reste posée sur son extrémité droite. */}
+      {menu ? (
+        <nav
+          aria-label="Navigation"
+          className="absolute inset-x-4 z-10 flex h-14 origin-right items-center justify-between rounded-full border-[1.5px] border-[#e0b43a] bg-[#0e1512] pl-3 shadow-[0_10px_24px_rgba(0,0,0,.3)] motion-safe:animate-[mb-menu_.3s_cubic-bezier(.2,.8,.3,1)_both]"
+          style={{ top: -28, paddingRight: 24 + BULLE - 16 + 8 }}
+        >
+          {MENU.map(({ href, label, Icon, qr }) =>
+            qr ? (
+              <Link key={href} href={href} aria-label="Mon Master Pass" className="press grid h-10 w-10 place-items-center rounded-full bg-[#e0b43a] text-[#1a1405]">
+                <Icon size={20} />
+              </Link>
+            ) : (
+              <Link
+                key={href}
+                href={href}
+                className={cn("press flex w-11 flex-col items-center gap-0.5 text-[9.5px]", href === "/app/shop" ? "text-[#e0b43a]" : "text-[#9fb0a6]")}
+              >
+                <Icon size={19} />
+                {label}
+              </Link>
+            ),
+          )}
+        </nav>
+      ) : null}
       {/* La bulle vit au-dessus du bord du tiroir : elle monte et descend avec lui. */}
-      <div className="absolute right-6 z-10 motion-safe:animate-[mb-bulle_.45s_.12s_cubic-bezier(.2,.8,.3,1.2)_both]" style={{ top: -BULLE / 2 }}>
-        {menu ? (
-          <nav
-            aria-label="Navigation"
-            className="absolute right-[-7px] flex h-[58px] origin-right items-center gap-1 rounded-full border-[1.5px] border-[#e0b43a] bg-[#0e1512] pl-3 shadow-[0_10px_24px_rgba(0,0,0,.3)] motion-safe:animate-[mb-menu_.3s_cubic-bezier(.2,.8,.3,1)_both]"
-            style={{ paddingRight: BULLE + 14, top: (BULLE - 58) / 2 }}
-          >
-            {MENU.map(({ href, label, Icon, qr }) =>
-              qr ? (
-                <Link key={href} href={href} aria-label="Mon Master Pass" className="press mx-1 grid h-10 w-10 place-items-center rounded-full bg-[#e0b43a] text-[#1a1405]">
-                  <Icon size={20} />
-                </Link>
-              ) : (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn("press flex w-12 flex-col items-center gap-0.5 text-[9.5px]", href === "/app/shop" ? "text-[#e0b43a]" : "text-[#9fb0a6]")}
-                >
-                  <Icon size={19} />
-                  {label}
-                </Link>
-              ),
-            )}
-          </nav>
-        ) : null}
+      <div className="absolute right-6 z-20 motion-safe:animate-[mb-bulle_.45s_.12s_cubic-bezier(.2,.8,.3,1.2)_both]" style={{ top: -BULLE / 2 }}>
         {/* La bulle reste dans son encoche : fermée, c'est le logo ; ouverte, la croix. */}
         <button
           type="button"

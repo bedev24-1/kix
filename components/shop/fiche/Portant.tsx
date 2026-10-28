@@ -65,9 +65,9 @@ export function Portant({
   return (
     <div className="flex flex-col">
       {n > 1 ? (
-        <div className="relative -mx-1 h-[86px] overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none]">
-          <div className="relative h-full" style={{ width: Math.max(n * 58, 0) }}>
-            <span className="absolute inset-x-0 top-2.5 h-1 rounded-full bg-gradient-to-b from-[#d3ccbc] to-[#b7af9d]" />
+        <div className="relative -mx-1 h-[52px] overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none]">
+          <div className="relative h-full" style={{ width: Math.max(n * 38, 0) }}>
+            <span className="absolute inset-x-0 top-[7px] h-[3px] rounded-full bg-gradient-to-b from-[#d3ccbc] to-[#b7af9d]" />
             {photos.map((url, i) => {
               const on = i === index;
               return (
@@ -77,18 +77,18 @@ export function Portant({
                   aria-label={`Photo ${i + 1} sur ${n}`}
                   aria-pressed={on}
                   onClick={() => onIndex(i)}
-                  className="absolute top-2 flex flex-col items-center transition-all duration-300"
-                  style={{ left: i * 58 }}
+                  className="absolute top-1.5 flex flex-col items-center transition-all duration-300"
+                  style={{ left: i * 38 }}
                 >
-                  <span className={cn("h-2.5 w-3 rounded-t-full border-2 border-b-0", on ? "border-[#b9893b]" : "border-[#a89f8b]")} />
-                  <span className={cn("w-0.5 transition-all duration-300", on ? "h-5 bg-[#b9893b]" : "h-3 bg-[#a89f8b]")} />
+                  <span className={cn("h-2 w-2.5 rounded-t-full border-[1.5px] border-b-0", on ? "border-[#b9893b]" : "border-[#a89f8b]")} />
+                  <span className={cn("w-0.5 transition-all duration-300", on ? "h-2.5 bg-[#b9893b]" : "h-1.5 bg-[#a89f8b]")} />
                   <span
                     className={cn(
-                      "relative overflow-hidden rounded-[10px] border-2 shadow-[0_4px_10px_rgba(0,0,0,.15)] transition-all duration-300",
-                      on ? "h-12 w-12 border-[#e0b43a]" : "h-10 w-10 border-white",
+                      "relative overflow-hidden rounded-[8px] border-[1.5px] shadow-[0_3px_8px_rgba(0,0,0,.15)] transition-all duration-300",
+                      on ? "h-8 w-8 border-[#e0b43a]" : "h-6.5 w-6.5 border-white",
                     )}
                   >
-                    <Photo src={url} alt="" fill sizes="48px" className="object-cover" />
+                    <Photo src={url} alt="" fill sizes="32px" className="object-cover" />
                   </span>
                 </button>
               );
@@ -97,7 +97,7 @@ export function Portant({
         </div>
       ) : null}
 
-      <div className="relative mt-1 aspect-[4/3.4] w-full select-none lg:aspect-[4/3.6]">
+      <div className="relative -mx-3 mt-1 aspect-[4/5.3] select-none md:mx-0 lg:aspect-[4/4.4]">
         {suivantes
           .slice()
           .reverse()
