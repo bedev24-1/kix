@@ -236,6 +236,75 @@ export const GearIcon = (p: IconProps) => (
  * `display:none` (la colonne vitrine cachée sur mobile), le monogramme visible
  * se peint dans le vide. Ce bloc vit dans le layout racine, toujours rendu.
  */
+export const StarIcon = ({ plein = false, ...p }: IconProps & { plein?: boolean }) => (
+  <Svg {...p}>
+    <path
+      d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"
+      fill={plein ? "currentColor" : "none"}
+    />
+  </Svg>
+);
+
+export const HeartIcon = ({ plein = false, ...p }: IconProps & { plein?: boolean }) => (
+  <Svg {...p}>
+    <path
+      d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"
+      fill={plein ? "currentColor" : "none"}
+    />
+  </Svg>
+);
+
+export const SwapIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 4 3.5 7.5 7 11M3.5 7.5H17M17 13l3.5 3.5L17 20M20.5 16.5H7" />
+  </Svg>
+);
+
+export const ShieldIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3.5 5 6v5.5c0 4.3 3 7.6 7 9 4-1.4 7-4.7 7-9V6z" />
+    <path d="m9 12 2.2 2.2L15.5 10" />
+  </Svg>
+);
+
+export const AwardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="9" r="5.5" />
+    <path d="m8.5 13.4-1.5 7.1 5-2.6 5 2.6-1.5-7.1" />
+  </Svg>
+);
+
+export const SparkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5" />
+  </Svg>
+);
+
+export const PhoneIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="7" y="2.5" width="10" height="19" rx="2.2" />
+    <path d="M11 18.5h2" />
+  </Svg>
+);
+
+export const ExpandIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M14.5 4H20v5.5M9.5 20H4v-5.5M20 4l-6.5 6.5M4 20l6.5-6.5" />
+  </Svg>
+);
+
+export const StoreIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 9.5 5.5 4h13L20 9.5M4 9.5h16M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5M10 20v-4.5h4V20" />
+  </Svg>
+);
+
+export const XIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Svg>
+);
+
 export const BrandDefs = () => (
   <svg width="0" height="0" aria-hidden="true" focusable="false" className="absolute">
     <defs>

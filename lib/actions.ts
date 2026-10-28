@@ -1,5 +1,6 @@
 "use server";
 
+import { estAtout, lireSpecs } from "@/lib/atouts";
 import { lireSexe, placesPour, refusDeSexe } from "@/lib/sexe";
 import { periode } from "@/lib/periode";
 import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
@@ -902,6 +903,10 @@ export async function saveProduct(formData: FormData) {
     badgeTone: str(formData, "badgeTone") || null,
     stock: num(formData, "stock"),
     active: bool(formData, "active"),
+    // Fiche technique et atouts : seulement quand le formulaire les porte —
+    // celui de l'administration ne les montre pas et ne doit pas les effacer.
+    ...(formData.has("specs") ? { specs: lireSpecs(str(formData, "specs")) } : {}),
+    ...(formData.has("atoutsForm") ? { atouts: formData.getAll("atouts").filter(estAtout) } : {}),
   };
 
   // Le vendeur ne se choisit pas dans un formulaire : à la création, c'est

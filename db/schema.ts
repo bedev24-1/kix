@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Vitrine } from "../lib/vitrine";
 import type { Cagnotte } from "../lib/cagnottes";
+import type { Atout, Spec } from "../lib/atouts";
 import {
   doublePrecision,
   type AnyPgColumn,
@@ -181,8 +182,42 @@ export const products = mb.table("products", {
   badgeTone: text("badge_tone"),
   stock: integer("stock").notNull().default(0),
   active: boolean("active").notNull().default(true),
+  /** La fiche technique : « Batterie » → « 1000 mAh ». */
+  specs: jsonb("specs").$type<Spec[]>().notNull().default([]),
+  /** Les atouts cochés par le vendeur (liste fermée, lib/atouts). */
+  atouts: jsonb("atouts").$type<Atout[]>().notNull().default([]),
   createdAt: createdAt(),
 });
+
+/**
+ * Les avis sur un article, un par client.
+ *
+ * Seul un client qui l'a acheté (commande payée) peut le noter : c'est ce qui
+ * permet d'afficher « Achat vérifié » sans mentir. Le client peut revenir sur
+ * son avis : la ligne est remplacée, pas doublée.
+ */
+export const productReviews = mb.table(
+  "product_reviews",
+  {
+    id: id(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** De 1 à 5. */
+    note: integer("note").notNull(),
+    texte: text("texte").notNull().default(""),
+    /** La déclinaison achetée, pour « Noir », « Mangue glacée ». */
+    variantLabel: text("variant_label").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("product_reviews_product_user_idx").on(t.productId, t.userId),
+    index("product_reviews_product_idx").on(t.productId),
+  ],
+);
 
 /**
  * Les images d'un article, au-delà de la première.
@@ -1495,6 +1530,7 @@ export type Token = typeof tokens.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type ProductImage = typeof productImages.$inferSelect;
 export type ProductVariant = typeof productVariants.$inferSelect;
+export type ProductReview = typeof productReviews.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type Crew = typeof crews.$inferSelect;

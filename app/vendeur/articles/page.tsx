@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Section } from "@/components/dash/Section";
 import { deleteProduct, saveProduct } from "@/lib/actions";
 import { GalerieEtVariantes } from "@/components/vendeur/GalerieEtVariantes";
+import { ChampsFiche } from "@/components/vendeur/ChampsFiche";
 import { getGalerieEtVariantes, getProduitsVendeur } from "@/lib/seller";
 import { requireRole } from "@/lib/session";
 import { f } from "@/lib/format";
@@ -39,6 +40,7 @@ export default async function VendeurArticles() {
           <ImageField name="image" dossier="produits" defaultValue="/img/puffs.jpg" />
           <Field label="Accroche" name="detail" className="sm:col-span-2" />
           <TextArea label="Description" name="description" className="sm:col-span-2" />
+          <ChampsFiche />
           <div className="flex items-center gap-4 sm:col-span-2">
             <Switch label="En vente" name="active" />
             <SubmitButton>Mettre en vente</SubmitButton>
@@ -94,6 +96,7 @@ export default async function VendeurArticles() {
                   <ImageField name="image" dossier="produits" defaultValue={product.image} />
                   <Field label="Accroche" name="detail" defaultValue={product.detail} className="sm:col-span-2" />
                   <TextArea label="Description" name="description" defaultValue={product.description} className="sm:col-span-2" />
+                  <ChampsFiche specs={product.specs} atouts={product.atouts} />
                   <div className="flex items-center gap-4 sm:col-span-2">
                     <Switch label="En vente" name="active" defaultChecked={product.active} />
                     <SubmitButton />

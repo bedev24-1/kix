@@ -428,6 +428,13 @@
       "when": 1790445420000,
       "tag": "0060_direct-sponsor",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790532000000,
+      "tag": "0061_fiche-produit",
+      "breakpoints": true
     }
   ]
 }

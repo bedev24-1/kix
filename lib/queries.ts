@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, gte, inArray, ne, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, ne, sql, sum, type SQL } from "drizzle-orm";
 import {
   db,
   events,
@@ -399,6 +399,85 @@ export async function getAllOrders() {
     .orderBy(desc(orders.createdAt))
     .limit(50);
   return rows;
+}
+
+export type FiltresUtilisateurs = {
+  q?: string;
+  role?: string;
+  periode?: string;
+  du?: string;
+  au?: string;
+  salle?: string;
+  sexe?: string;
+  statut?: string;
+  tri?: string;
+  page?: number;
+};
+
+const PAR_PAGE = 50;
+
+/** Les filtres de la page admin des utilisateurs, traduits en conditions SQL. */
+function conditionsUtilisateurs(f: FiltresUtilisateurs) {
+  const c: SQL[] = [];
+  const q = (f.q ?? "").trim();
+  if (q) {
+    const motif = `%${q.replace(/[%_\\]/g, "")}%`;
+    c.push(sql`(${users.name} ilike ${motif} or ${users.phone} ilike ${motif} or ${users.code} ilike ${motif})`);
+  }
+  if (f.role && ["client", "manager", "seller", "admin"].includes(f.role)) c.push(eq(users.role, f.role));
+  const jours = { "24h": 1, "7j": 7, "30j": 30, "90j": 90 }[f.periode ?? ""];
+  if (jours) c.push(gte(users.createdAt, new Date(Date.now() - jours * 86_400_000)));
+  if (f.du && /^\d{4}-\d{2}-\d{2}$/.test(f.du)) c.push(gte(users.createdAt, new Date(`${f.du}T00:00:00+01:00`)));
+  if (f.au && /^\d{4}-\d{2}-\d{2}$/.test(f.au)) c.push(sql`${users.createdAt} < ${`${f.au}T00:00:00+01:00`}::timestamptz + interval '1 day'`);
+  if (f.salle === "aucune") c.push(isNull(users.venueId));
+  else if (f.salle) c.push(eq(users.venueId, f.salle));
+  if (f.sexe === "homme" || f.sexe === "femme") c.push(eq(users.sexe, f.sexe));
+  else if (f.sexe === "inconnu") c.push(isNull(users.sexe));
+  if (f.statut === "membre") c.push(gt(users.memberUntil, new Date()));
+  if (f.statut === "certifie") c.push(isNotNull(users.certifie));
+  if (f.statut === "avatar") c.push(isNotNull(users.avatar));
+  if (f.statut === "sans-avatar") c.push(isNull(users.avatar));
+  return c.length ? and(...c) : undefined;
+}
+
+/** La liste filtrée, paginée, et son total. */
+export async function chercherUtilisateurs(f: FiltresUtilisateurs) {
+  const ou = conditionsUtilisateurs(f);
+  const ordre =
+    f.tri === "anciens"
+      ? [asc(users.createdAt)]
+      : f.tri === "points"
+        ? [desc(users.points), desc(users.createdAt)]
+        : f.tri === "nom"
+          ? [asc(users.name)]
+          : [desc(users.createdAt)];
+  const page = Math.max(1, f.page ?? 1);
+  const [lignes, total] = await Promise.all([
+    db.select().from(users).where(ou).orderBy(...ordre).limit(PAR_PAGE).offset((page - 1) * PAR_PAGE),
+    db.select({ n: count() }).from(users).where(ou),
+  ]);
+  return { lignes, total: total[0]?.n ?? 0, page, pages: Math.max(1, Math.ceil((total[0]?.n ?? 0) / PAR_PAGE)) };
+}
+
+/** Les chiffres d'ensemble : total, inscriptions récentes, répartition par rôle. */
+export async function chiffresUtilisateurs() {
+  const maintenant = Date.now();
+  const depuis = (j: number) => new Date(maintenant - j * 86_400_000).toISOString();
+  const [ligne] = await db
+    .select({
+      total: count(),
+      jour: sql<number>`count(*) filter (where ${users.createdAt} >= ${depuis(1)}::timestamptz)::int`,
+      semaine: sql<number>`count(*) filter (where ${users.createdAt} >= ${depuis(7)}::timestamptz)::int`,
+      mois: sql<number>`count(*) filter (where ${users.createdAt} >= ${depuis(30)}::timestamptz)::int`,
+      membres: sql<number>`count(*) filter (where ${users.memberUntil} > now())::int`,
+      clients: sql<number>`count(*) filter (where ${users.role} = 'client')::int`,
+      gerants: sql<number>`count(*) filter (where ${users.role} = 'manager')::int`,
+      vendeurs: sql<number>`count(*) filter (where ${users.role} = 'seller')::int`,
+      admins: sql<number>`count(*) filter (where ${users.role} = 'admin')::int`,
+    })
+    .from(users);
+  const derniers = await db.select().from(users).orderBy(desc(users.createdAt)).limit(10);
+  return { ...ligne, derniers };
 }
 
 export async function getAllUsers() {
