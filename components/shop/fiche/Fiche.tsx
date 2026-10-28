@@ -266,11 +266,12 @@ export function Fiche({
               pour qu'il n'y ait pas de vide sous lui ; puis les infos qui
               décident l'achat (stock, livraison, retrait). */}
           <div ref={repere} className="mt-3">
-            {/* Le titre, et à côté : les ventes de la semaine et le partage.
-                Un titre long prend la ligne : les deux passent dessous. */}
-            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-              <h1 className="min-w-0 text-[21px] leading-[1.12] font-extrabold lg:text-[30px]">{produit.name}</h1>
-              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            {/* Le titre, et toujours sur sa ligne, centrés sur lui : les ventes
+                de la semaine et le partage. Un titre long passe à la ligne
+                dans sa colonne ; eux ne descendent jamais. */}
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="min-w-0 flex-1 text-[21px] leading-[1.12] font-extrabold text-balance lg:text-[30px]">{produit.name}</h1>
+              <span className="flex shrink-0 items-center gap-1.5">
                 {vendus > 0 ? (
                   <span className="flex items-center gap-1 rounded-full bg-[#0e1512] px-2.5 py-1.5 text-[10.5px] font-bold whitespace-nowrap text-[#f6d77a]">
                     <FlameIcon size={13} /> {vendus} vendu{vendus > 1 ? "s" : ""} · 7 j
