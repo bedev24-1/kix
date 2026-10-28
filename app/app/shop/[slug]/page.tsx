@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Fiche } from "@/components/shop/fiche/Fiche";
-import { achatDuClient, avisDuClient, avisDuProduit, vendeurDe } from "@/lib/avis";
+import { achatDuClient, avisDuClient, avisDuProduit, vendeurDe, ventesRecentes } from "@/lib/avis";
+import { cartesBanniere } from "@/lib/banniere";
 import { getFicheProduit, getProduct, getProducts } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
 import { DELIVERY_FEE } from "@/lib/constants";
@@ -18,12 +19,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { produit, galerie, declinaisons } = fiche;
 
   const user = await getCurrentUser();
-  const [autres, avis, vendeur, achat, monAvis] = await Promise.all([
+  const [autres, avis, vendeur, achat, monAvis, promos, vendus] = await Promise.all([
     getProducts(produit.category),
     avisDuProduit(produit.id),
     vendeurDe(produit.sellerId),
     user ? achatDuClient(user.id, produit.id) : null,
     user ? avisDuClient(user.id, produit.id) : null,
+    cartesBanniere(),
+    ventesRecentes(produit.id),
   ]);
 
   return (
@@ -41,6 +44,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         .slice(0, 6)
         .map((p) => ({ slug: p.slug, name: p.name, price: p.price, image: p.image }))}
       livraison={DELIVERY_FEE}
+      promos={promos}
+      vendus={vendus}
     />
   );
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db, orderItems, orders, productReviews, products, users } from "@/db";
 
 /** Une commande compte comme un achat dès qu'elle est payée. */
@@ -124,4 +124,15 @@ export async function vendeurDe(sellerId: string | null): Promise<VendeurVue> {
     note: Math.round((notes[0]?.moyenne ?? 0) * 10) / 10,
     avis: notes[0]?.n ?? 0,
   };
+}
+
+/** Combien d'exemplaires de cet article sont partis ces 7 derniers jours. */
+export async function ventesRecentes(productId: string): Promise<number> {
+  const depuis = new Date(Date.now() - 7 * 86_400_000);
+  const [ligne] = await db
+    .select({ n: sql<number>`coalesce(sum(${orderItems.qty}), 0)::int` })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(eq(orderItems.productId, productId), inArray(orders.status, ACHETEES), gte(orders.createdAt, depuis)));
+  return ligne?.n ?? 0;
 }

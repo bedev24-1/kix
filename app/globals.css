@@ -746,3 +746,7 @@
   from { transform: rotate(-90deg) scale(0.6); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+@keyframes mb-feuillet {
+  from { transform: rotateX(-90deg); opacity: 0.4; }
+  to { transform: none; opacity: 1; }
+}

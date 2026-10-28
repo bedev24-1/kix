@@ -305,6 +305,12 @@ export const XIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const FlameIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3c1 3 4.5 4.6 4.5 9a4.5 4.5 0 0 1-9 0c0-1.8.8-3 1.7-3.9.2 1.7 1.1 2.6 2.2 2.6 0-2.6-.6-5.1.6-7.7z" />
+  </Svg>
+);
+
 export const BrandDefs = () => (
   <svg width="0" height="0" aria-hidden="true" focusable="false" className="absolute">
     <defs>

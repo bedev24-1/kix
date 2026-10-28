@@ -6,6 +6,7 @@ import { modifierTarif } from "@/lib/actions-promo";
 import { CAPACITE, contenuPopup } from "@/lib/promotions";
 import { Photo } from "@/components/ui/Photo";
 import { requireRole } from "@/lib/session";
+import { BanniereAdmin } from "@/components/admin/BanniereAdmin";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Promotions" };
@@ -40,10 +41,13 @@ export default async function AdminPromotions() {
   return (
     <>
       <PageHead
-        title="Promotions des événements"
+        title="Promotions"
         subtitle={`Places à la fois : ${CAPACITE.une} à la une, ${CAPACITE.sponsorise} sponsorisés, ${CAPACITE.popup} pop-up. Au plus une notification promotionnelle par joueur et par jour.`}
       />
 
+      <BanniereAdmin />
+
+      <h2 className="mt-2 text-[15px] font-semibold">Promotions des événements (gérants)</h2>
       <section className="flex flex-col gap-3 border border-line p-4">
         <h2 className="text-[14px] font-semibold">Formules et prix</h2>
         <div className="flex flex-col gap-2">

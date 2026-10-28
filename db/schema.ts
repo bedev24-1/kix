@@ -533,6 +533,34 @@ export const tarifsPromo = mb.table("tarifs_promo", {
 });
 
 /**
+ * Les cartes de la bannière de la boutique, choisies par l'administration :
+ * un tournoi, un événement, un produit, ou une carte libre. `refId` désigne
+ * l'élément promu (sans clé étrangère : il peut viser trois tables) ; titre,
+ * image et lien sont recopiés à la création et restent modifiables.
+ */
+export const shopBanners = mb.table(
+  "shop_banners",
+  {
+    id: id(),
+    /** tournoi | evenement | produit | libre */
+    kind: text("kind").notNull().default("libre"),
+    refId: uuid("ref_id"),
+    titre: text("titre").notNull(),
+    detail: text("detail").notNull().default(""),
+    image: text("image").notNull().default(""),
+    bouton: text("bouton").notNull().default("Voir"),
+    lien: text("lien").notNull().default("/app"),
+    /** Le plus petit passe en premier. */
+    ordre: integer("ordre").notNull().default(0),
+    actif: boolean("actif").notNull().default(true),
+    debut: timestamp("debut", { withTimezone: true }),
+    fin: timestamp("fin", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("shop_banners_ordre_idx").on(t.actif, t.ordre)],
+);
+
+/**
  * La promotion d'un événement par son gérant.
  *
  * demande → valide (l'administration a vu le contenu, le gérant peut payer)
@@ -1531,6 +1559,7 @@ export type Product = typeof products.$inferSelect;
 export type ProductImage = typeof productImages.$inferSelect;
 export type ProductVariant = typeof productVariants.$inferSelect;
 export type ProductReview = typeof productReviews.$inferSelect;
+export type ShopBanner = typeof shopBanners.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type Crew = typeof crews.$inferSelect;

@@ -14,6 +14,8 @@ import {
   UserIcon,
   XIcon,
   ChevronLeftIcon,
+  FlameIcon,
+  ShareIcon,
   LockIcon,
   MinusIcon,
   PhoneIcon,
@@ -30,6 +32,8 @@ import { addToCart, useCart } from "@/lib/cart";
 import { cn } from "@/lib/cn";
 import { f } from "@/lib/format";
 import type { ResumeAvis, VendeurVue } from "@/lib/avis";
+import type { CartePromo } from "@/lib/banniere";
+import { Banniere } from "./Banniere";
 import { Portant } from "./Portant";
 import { Etoiles, SectionAvis } from "./Avis";
 
@@ -56,6 +60,8 @@ export function Fiche({
   monAvis,
   autres,
   livraison,
+  promos,
+  vendus,
 }: {
   produit: Product;
   galerie: ProductImage[];
@@ -67,6 +73,8 @@ export function Fiche({
   monAvis: { note: number; texte: string } | null;
   autres: Autre[];
   livraison: number;
+  promos: CartePromo[];
+  vendus: number;
 }) {
   const { notify } = useSnackbar();
   const { count } = useCart();
@@ -86,6 +94,18 @@ export function Fiche({
   const prix = choisie?.price ?? produit.price;
   const stock = choisie ? choisie.stock : produit.stock;
   const epuise = stock <= 0;
+
+  // Partager : la feuille native du téléphone, sinon WhatsApp directement.
+  const partager = async () => {
+    const url = window.location.href.split("?")[0];
+    const texte = `${produit.name} · ${f(prix)} sur Master Break`;
+    try {
+      if (navigator.share) return await navigator.share({ title: produit.name, text: texte, url });
+    } catch {
+      return; // partage annulé
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${texte}\n${url}`)}`, "_blank", "noopener");
+  };
 
   const ajouter = () => {
     const nom = choisie ? `${produit.name} · ${choisie.name}` : produit.name;
@@ -185,16 +205,17 @@ export function Fiche({
       </div>
 
       {/* En-tête compact : la place va à la photo. */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
         <Link href="/app/shop" aria-label="Retour à la boutique" className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#d8d2c3]">
           <ChevronLeftIcon size={18} />
         </Link>
-        <span className="flex min-w-0 flex-col items-center leading-none">
-          <span className="text-[20px] font-extrabold tracking-[-0.01em] uppercase lg:text-[30px]">{rayon}</span>
-          <Link href="/app/shop" className="mt-1 text-[11px] text-[#b9893b]">
-            voir le rayon
-          </Link>
+        <span className="flex shrink-0 flex-col leading-none">
+          <span className="text-[15px] font-extrabold tracking-[0.02em] uppercase lg:text-[20px]">{rayon}</span>
+          <span className="mt-1 text-[10px] text-[#b9893b]">
+            <Link href="/app/shop">Shop</Link> › {rayon}
+          </span>
         </span>
+        <Banniere cartes={promos} />
         <Link href="/app/panier" aria-label="Panier" className="press relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#d8d2c3]">
           <CartIcon size={18} />
           {count > 0 ? (
@@ -245,7 +266,26 @@ export function Fiche({
               pour qu'il n'y ait pas de vide sous lui ; puis les infos qui
               décident l'achat (stock, livraison, retrait). */}
           <div ref={repere} className="mt-3">
-            <h1 className="text-[21px] leading-[1.12] font-extrabold lg:text-[30px]">{produit.name}</h1>
+            {/* Le titre, et à côté : les ventes de la semaine et le partage.
+                Un titre long prend la ligne : les deux passent dessous. */}
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+              <h1 className="min-w-0 text-[21px] leading-[1.12] font-extrabold lg:text-[30px]">{produit.name}</h1>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                {vendus > 0 ? (
+                  <span className="flex items-center gap-1 rounded-full bg-[#0e1512] px-2.5 py-1.5 text-[10.5px] font-bold whitespace-nowrap text-[#f6d77a]">
+                    <FlameIcon size={13} /> {vendus} vendu{vendus > 1 ? "s" : ""} · 7 j
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  aria-label="Partager cet article"
+                  onClick={partager}
+                  className="press grid h-[34px] w-[34px] place-items-center rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,.08)]"
+                >
+                  <ShareIcon size={15} />
+                </button>
+              </span>
+            </div>
             <div className="mt-1.5 flex items-end justify-between gap-4">
               <div className="flex min-w-0 flex-col gap-1">
                 {avis.total > 0 ? (

@@ -435,6 +435,13 @@
       "when": 1790532000000,
       "tag": "0061_fiche-produit",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790618400000,
+      "tag": "0062_banniere-boutique",
+      "breakpoints": true
     }
   ]
 }
