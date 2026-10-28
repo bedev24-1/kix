@@ -7,7 +7,12 @@ import { Photo } from "@/components/ui/Photo";
 import { useSnackbar } from "@/components/ui/Snackbar";
 import {
   AwardIcon,
+  BoltIcon,
   CartIcon,
+  HomeIcon,
+  QrIcon,
+  UserIcon,
+  XIcon,
   ChevronLeftIcon,
   LockIcon,
   MinusIcon,
@@ -161,7 +166,7 @@ export function Fiche({
   );
 
   return (
-    <div className="-mx-5 -mt-4 -mb-32 min-h-dvh bg-[#f4efe2] px-5 pt-4 pb-56 text-[#0e1512] md:-mx-7 md:-mt-6 md:px-7 md:pt-6 lg:mx-0 lg:mt-0 lg:mb-0 lg:rounded-[28px] lg:px-10 lg:pt-8 lg:pb-12">
+    <div className="-mx-5 -mt-4 -mb-32 min-h-dvh bg-[#f4efe2] px-5 pt-4 pb-44 text-[#0e1512] md:-mx-7 md:-mt-6 md:px-7 md:pt-6 lg:mx-0 lg:mt-0 lg:mb-0 lg:rounded-[28px] lg:px-10 lg:pt-8 lg:pb-12">
       {/* Bandeau collant : l'article ne quitte jamais l'écran. */}
       <div
         className={cn(
@@ -343,11 +348,75 @@ export function Fiche({
   );
 }
 
+/* La bulle : la barre de navigation repliée, posée sur le tiroir. */
+const MENU = [
+  { href: "/app", label: "Accueil", Icon: HomeIcon },
+  { href: "/direct", label: "Direct", Icon: BoltIcon },
+  { href: "/app/pass", label: "Pass", Icon: QrIcon, qr: true },
+  { href: "/app/shop", label: "Shop", Icon: CartIcon },
+  { href: "/app/rewards", label: "Profil", Icon: UserIcon },
+];
+
+/** Diamètre de la bulle, et le jour laissé tout autour par l'encoche. */
+const BULLE = 44;
+const JOUR = 6;
+
 function Tiroir({ ouvert, onOuvert, children }: { ouvert: boolean; onOuvert: (v: boolean) => void; children: React.ReactNode }) {
   const depart = useRef<number | null>(null);
+  const [menu, setMenu] = useState(false);
+  const centre = 24 + BULLE / 2; // distance du centre de la bulle au bord droit
+  const encoche = `radial-gradient(circle ${BULLE / 2 + JOUR + 1}px at calc(100% - ${centre}px) 0, transparent ${BULLE / 2 + JOUR}px, #000 ${BULLE / 2 + JOUR + 1}px)`;
+
   return (
-    <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 mx-auto w-full max-w-[430px] px-3 md:max-w-[46rem] lg:hidden">
-      <div className="rounded-[28px] bg-[#0e1512] px-4 pt-2 pb-3 text-[#f4efe2] shadow-[0_-10px_30px_rgba(0,0,0,.25)]">
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] md:max-w-[46rem] lg:hidden">
+      {/* La bulle vit au-dessus du bord du tiroir : elle monte et descend avec lui. */}
+      <div className="absolute right-6 z-10 motion-safe:animate-[mb-bulle_.45s_.12s_cubic-bezier(.2,.8,.3,1.2)_both]" style={{ top: -BULLE / 2 }}>
+        {menu ? (
+          <nav
+            aria-label="Navigation"
+            className="absolute right-[-7px] flex h-[58px] origin-right items-center gap-1 rounded-full border-[1.5px] border-[#e0b43a] bg-[#0e1512] pl-3 shadow-[0_10px_24px_rgba(0,0,0,.3)] motion-safe:animate-[mb-menu_.3s_cubic-bezier(.2,.8,.3,1)_both]"
+            style={{ paddingRight: BULLE + 14, top: (BULLE - 58) / 2 }}
+          >
+            {MENU.map(({ href, label, Icon, qr }) =>
+              qr ? (
+                <Link key={href} href={href} aria-label="Mon Master Pass" className="press mx-1 grid h-10 w-10 place-items-center rounded-full bg-[#e0b43a] text-[#1a1405]">
+                  <Icon size={20} />
+                </Link>
+              ) : (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn("press flex w-12 flex-col items-center gap-0.5 text-[9.5px]", href === "/app/shop" ? "text-[#e0b43a]" : "text-[#9fb0a6]")}
+                >
+                  <Icon size={19} />
+                  {label}
+                </Link>
+              ),
+            )}
+          </nav>
+        ) : null}
+        {/* La bulle reste dans son encoche : fermée, c'est le logo ; ouverte, la croix. */}
+        <button
+          type="button"
+          aria-label={menu ? "Refermer le menu" : "Ouvrir le menu"}
+          aria-expanded={menu}
+          onClick={() => setMenu((m) => !m)}
+          className="press relative grid place-items-center rounded-full border-[1.5px] border-[#e0b43a] bg-[#0e1512] text-[#f4efe2] shadow-[0_0_12px_rgba(0,0,0,.22)]"
+          style={{ width: BULLE, height: BULLE }}
+        >
+          {menu ? (
+            <XIcon size={17} className="motion-safe:animate-[mb-tourne_.3s_ease-out]" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/brand/emblem.png" alt="" className="h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      <div
+        className="rounded-t-[30px] bg-[#0e1512] px-4 pt-2 pb-[calc(.9rem+env(safe-area-inset-bottom))] text-[#f4efe2] shadow-[0_-10px_30px_rgba(0,0,0,.18)] motion-safe:animate-[mb-tiroir_.35s_cubic-bezier(.2,.7,.3,1)_both]"
+        style={{ WebkitMaskImage: encoche, maskImage: encoche }}
+      >
         <button
           type="button"
           aria-expanded={ouvert}
@@ -364,7 +433,7 @@ function Tiroir({ ouvert, onOuvert, children }: { ouvert: boolean; onOuvert: (v:
             if (dy < -25) onOuvert(true);
             else if (dy > 25) onOuvert(false);
           }}
-          className="flex w-full touch-none flex-col items-center gap-1 pb-2"
+          className="flex w-full touch-none flex-col items-center gap-1 pb-2.5"
         >
           <span className="h-[5px] w-12 rounded-full bg-[#59625d]" />
           {ouvert ? null : <span className="text-[10.5px] text-[#8a978f]">Glisse pour les détails</span>}

@@ -728,3 +728,21 @@
 }
 .mba-pop { display: inline-block; animation: mba-pop 0.6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .mba-pop { animation: none; } }
+
+/* Fiche produit : la barre de navigation devient une bulle posée sur le tiroir. */
+@keyframes mb-bulle {
+  from { opacity: 0; transform: translate(-90px, 40px) scale(0.4); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mb-menu {
+  from { opacity: 0; transform: scaleX(0.2); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mb-tiroir {
+  from { transform: translateY(40px) scaleX(0.9); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes mb-tourne {
+  from { transform: rotate(-90deg) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
