@@ -8,8 +8,9 @@ import { cn } from "@/lib/cn";
 /**
  * Les photos d'un article, « sur le portant ».
  *
- * Chaque photo pend au rail comme un vêtement en boutique ; celle qu'on
- * regarde descend sur son fil. La grande photo est le dessus d'une pile :
+ * Une tringle dorée est fixée dans le bas de la grande photo ; chaque photo
+ * secondaire y pend comme un vêtement en boutique, par-dessus le bord, et celle
+ * qu'on regarde descend sur son fil. La grande photo est le dessus d'une pile :
  * on la jette sur le côté du doigt, la suivante sort de dessous, et le
  * crochet glisse le long du rail. Un toucher l'ouvre en grand.
  */
@@ -64,40 +65,7 @@ export function Portant({
 
   return (
     <div className="flex flex-col">
-      {n > 1 ? (
-        <div className="relative -mx-1 h-[52px] overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none]">
-          <div className="relative h-full" style={{ width: Math.max(n * 38, 0) }}>
-            <span className="absolute inset-x-0 top-[7px] h-[3px] rounded-full bg-gradient-to-b from-[#d3ccbc] to-[#b7af9d]" />
-            {photos.map((url, i) => {
-              const on = i === index;
-              return (
-                <button
-                  key={url + i}
-                  type="button"
-                  aria-label={`Photo ${i + 1} sur ${n}`}
-                  aria-pressed={on}
-                  onClick={() => onIndex(i)}
-                  className="absolute top-1.5 flex flex-col items-center transition-all duration-300"
-                  style={{ left: i * 38 }}
-                >
-                  <span className={cn("h-2 w-2.5 rounded-t-full border-[1.5px] border-b-0", on ? "border-[#b9893b]" : "border-[#a89f8b]")} />
-                  <span className={cn("w-0.5 transition-all duration-300", on ? "h-2.5 bg-[#b9893b]" : "h-1.5 bg-[#a89f8b]")} />
-                  <span
-                    className={cn(
-                      "relative overflow-hidden rounded-[8px] border-[1.5px] shadow-[0_3px_8px_rgba(0,0,0,.15)] transition-all duration-300",
-                      on ? "h-8 w-8 border-[#e0b43a]" : "h-6.5 w-6.5 border-white",
-                    )}
-                  >
-                    <Photo src={url} alt="" fill sizes="32px" className="object-cover" />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="relative -mx-3 mt-1 aspect-[4/5.3] select-none md:mx-0 lg:aspect-[4/4.4]">
+      <div className={cn("relative -mx-3 mt-1 aspect-[4/5.3] select-none md:mx-0 lg:aspect-[4/4.4]", n > 1 && "mb-7")}>
         {suivantes
           .slice()
           .reverse()
@@ -166,14 +134,53 @@ export function Portant({
         <button
           type="button"
           onClick={() => setZoom(true)}
-          className="press absolute bottom-3.5 left-3.5 flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-bold shadow"
+          className={cn("press absolute left-3.5 flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-bold shadow", n > 1 ? "bottom-12" : "bottom-3.5")}
         >
           <ExpandIcon size={13} /> Zoom
         </button>
         {n > 1 ? (
-          <span className="pointer-events-none absolute right-3.5 bottom-3.5 rounded-full bg-[#0e1512]/75 px-2.5 py-1 text-[11px] font-bold text-[#f4efe2]">
+          <span className="pointer-events-none absolute right-3.5 bottom-12 rounded-full bg-[#0e1512]/75 px-2.5 py-1 text-[11px] font-bold text-[#f4efe2]">
             {index + 1} / {n}
           </span>
+        ) : null}
+
+        {/* La tringle, fixée dans le bas de la photo : les photos secondaires
+            y pendent et passent par-dessus le bord, comme sur un portant. */}
+        {n > 1 ? (
+          <div className="absolute inset-x-4 -bottom-[26px] z-10 h-[62px]">
+            <span className="absolute -left-1 top-[3px] h-[11px] w-[6px] rounded-[2px] bg-gradient-to-b from-[#f3dc93] to-[#8a6a12] shadow" />
+            <span className="absolute -right-1 top-[3px] h-[11px] w-[6px] rounded-[2px] bg-gradient-to-b from-[#f3dc93] to-[#8a6a12] shadow" />
+            <span className="absolute inset-x-0 top-[6px] h-[5px] rounded-full bg-gradient-to-b from-[#f6e4a6] via-[#c99a3e] to-[#7a5c10] shadow-[0_2px_6px_rgba(0,0,0,.45)]" />
+            <div className="relative h-full overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none]">
+              <div className="relative h-full" style={{ width: n * 42 }}>
+                {photos.map((url, i) => {
+                  const on = i === index;
+                  return (
+                    <button
+                      key={url + i}
+                      type="button"
+                      aria-label={`Photo ${i + 1} sur ${n}`}
+                      aria-pressed={on}
+                      onClick={() => onIndex(i)}
+                      className="absolute top-[2px] flex flex-col items-center"
+                      style={{ left: i * 42 }}
+                    >
+                      <span className={cn("h-[10px] w-3 rounded-t-full border-2 border-b-0", on ? "border-[#f3dc93]" : "border-[#e9e2d0]")} />
+                      <span className={cn("w-0.5 transition-all duration-300", on ? "h-3 bg-[#f3dc93]" : "h-1.5 bg-[#e9e2d0]")} />
+                      <span
+                        className={cn(
+                          "relative overflow-hidden rounded-[9px] border-2 shadow-[0_4px_10px_rgba(0,0,0,.35)] transition-all duration-300",
+                          on ? "h-9 w-9 border-[#e0b43a]" : "h-7 w-7 border-white",
+                        )}
+                      >
+                        <Photo src={url} alt="" fill sizes="36px" className="object-cover" />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         ) : null}
       </div>
 
