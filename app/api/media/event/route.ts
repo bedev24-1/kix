@@ -42,6 +42,9 @@ export async function POST(request: Request) {
     if (stream.status !== "live") {
       const { prevenirLesAbonnes } = await import("@/lib/suivis");
       await prevenirLesAbonnes(stream).catch(() => 0);
+      // Et tous ceux qui ont touché « Me prévenir » sur l'accueil.
+      const { prevenirLesRappels } = await import("@/lib/rappels");
+      await prevenirLesRappels(stream).catch(() => 0);
     }
   } else if (event === "notready") {
     await db

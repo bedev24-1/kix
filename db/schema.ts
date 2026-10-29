@@ -1030,6 +1030,25 @@ export const streamPasses = mb.table(
  * Une ligne par lien, unique dans le sens qu'elle porte : suivre n'est pas
  * réciproque, contrairement à l'amitié. On ne se suit pas soi-même.
  */
+/**
+ * « Me prévenir au prochain direct » : un rappel par compte, à usage unique.
+ *
+ * Posé depuis l'accueil quand aucune caméra ne tourne ; à l'allumage de la
+ * suivante, quelle que soit la salle, chacun est prévenu une fois et le
+ * rappel s'efface.
+ */
+export const rappelsDirect = mb.table(
+  "rappels_direct",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("rappels_direct_user_idx").on(t.userId)],
+);
+
 export const follows = mb.table(
   "follows",
   {

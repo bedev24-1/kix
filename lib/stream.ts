@@ -274,6 +274,35 @@ export async function getDirectsEnCours() {
 
 export type Encours = Awaited<ReturnType<typeof getDirectsEnCours>>;
 
+/**
+ * Les dernières rediffusions, pour l'accueil quand aucune caméra ne tourne :
+ * on n'a rien en direct, on propose de revoir.
+ */
+export async function dernieresRediffusions(limite = 4) {
+  const rows = await db
+    .select({ stream: streams, venue: venues })
+    .from(streams)
+    .innerJoin(venues, eq(venues.id, streams.venueId))
+    .where(eq(streams.status, "ended"))
+    .orderBy(desc(streams.endedAt))
+    .limit(limite);
+
+  return rows.map(({ stream, venue }) => ({
+    id: stream.id,
+    titre: stream.title,
+    salle: venue.name,
+    image: stream.poster ?? venue.image,
+    finiLe: stream.endedAt?.getTime() ?? null,
+    minutes:
+      stream.startedAt && stream.endedAt
+        ? Math.max(1, Math.round((stream.endedAt.getTime() - stream.startedAt.getTime()) / 60000))
+        : null,
+    vues: stream.peakViewers,
+  }));
+}
+
+export type Rediffusion = Awaited<ReturnType<typeof dernieresRediffusions>>[number];
+
 export async function getShowcase(): Promise<{
   featured: StreamCard[];
   rail: StreamCard[];

@@ -6,25 +6,57 @@ import { EnTeteAccueil } from "@/components/mb/accueil/EnTete";
 import { BlocEvenements, type Affiche, type Vignette } from "@/components/mb/accueil/BlocEvenements";
 import { Filtres } from "@/components/mb/accueil/Filtres";
 import { Acces } from "@/components/mb/accueil/Acces";
-import { getDirectsEnCours } from "@/lib/stream";
+import { AucunDirect } from "@/components/mb/accueil/AucunDirect";
+import { dernieresRediffusions, getDirectsEnCours, type Rediffusion } from "@/lib/stream";
+import { aUnRappel } from "@/lib/rappels";
+import { cleWebPushFirebase, configFirebase } from "@/lib/firebase";
 import { getBalance, getEvents, getUnreadCount, getVenues, tournoisDesEvenements } from "@/lib/queries";
 import { requireUser } from "@/lib/session";
 import { lireDebut } from "@/lib/debut";
-import { f } from "@/lib/format";
+import { f, group } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 /** « 21:00 → 02:00 » → « 21:00 » : l'heure d'ouverture suffit sur une vignette. */
 const ouverture = (hours: string) => hours.split(/→|-|–/)[0].trim();
 
+/** « Aujourd'hui », « Hier » ou « Le 12 oct. », à l'heure de Douala. */
+function quandRediffusion(fin: number | null, maintenant: number): string {
+  if (!fin) return "Rediffusion";
+  const jour = (t: number) => Math.floor((t + 3_600_000) / 86_400_000);
+  const ecart = jour(maintenant) - jour(fin);
+  if (ecart <= 0) return "Revoir · aujourd'hui";
+  if (ecart === 1) return "Revoir · hier";
+  const date = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "Africa/Douala" }).format(fin);
+  return `Revoir · le ${date}`;
+}
+
+const duree = (minutes: number | null) =>
+  minutes === null ? null : minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
+
+function vignettesDeRediffusions(rows: Rediffusion[]): Vignette[] {
+  const maintenant = Date.now();
+  return rows.map((r) => vignetteDeRediffusion(r, maintenant));
+}
+
+const vignetteDeRediffusion = (r: Rediffusion, maintenant: number): Vignette => ({
+  href: `/direct/${r.id}`,
+  titre: r.titre,
+  quand: quandRediffusion(r.finiLe, maintenant),
+  detail: [r.salle, duree(r.minutes), r.vues > 0 ? `${group(r.vues)} vues` : null].filter(Boolean).join(" · "),
+  image: r.image,
+});
+
 export default async function AccueilPage() {
   const user = await requireUser();
-  const [balance, venues, events, unread, encours] = await Promise.all([
+  const [balance, venues, events, unread, encours, rappel, rediffusions] = await Promise.all([
     getBalance(user.id),
     getVenues(),
     getEvents(),
     getUnreadCount(user.id),
     getDirectsEnCours(),
+    aUnRappel(user.id),
+    dernieresRediffusions(4),
   ]);
 
   // Ce qui arrive passe devant ; s'il n'y a plus rien à venir, la dernière affiche reste.
@@ -81,7 +113,20 @@ export default async function AccueilPage() {
         {une ? <BlocEvenements une={une} autres={autres} /> : null}
         <Filtres />
         <div className="px-[9px] pt-1 md:px-0">
-          <DirectAccueil initial={encours} />
+          <DirectAccueil
+            initial={encours}
+            vide={
+              <AucunDirect
+                rappel={rappel}
+                rediffusions={vignettesDeRediffusions(rediffusions)}
+                canal={{
+                  cleVapid: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+                  firebase: configFirebase(),
+                  cleWebPushFirebase: cleWebPushFirebase(),
+                }}
+              />
+            }
+          />
         </div>
       </div>
 

@@ -442,6 +442,13 @@
       "when": 1790618400000,
       "tag": "0062_banniere-boutique",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790618401000,
+      "tag": "0063_rappels-direct",
+      "breakpoints": true
     }
   ]
 }

@@ -18,8 +18,11 @@ import type { Encours } from "@/lib/stream";
  * elle se met à jour toute seule — une salle qui allume sa caméra apparaît
  * ici sans que personne ne recharge quoi que ce soit.
  */
-export function DirectAccueil({ initial }: { initial: Encours }) {
+export function DirectAccueil({ initial, vide }: { initial: Encours; /** Ce qui s'affiche quand aucune caméra ne tourne. */ vide?: React.ReactNode }) {
   const { data } = useLive<Encours>("/api/direct/encours", initial);
+
+  // Rien à l'antenne : l'accueil fournit son propre bloc (rappel + rediffusions).
+  if (data.total === 0 && vide) return <>{vide}</>;
 
   // Rien à l'antenne : on invite, sans mentir sur ce qui s'y passe.
   if (data.total === 0) {

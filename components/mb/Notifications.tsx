@@ -25,7 +25,7 @@ const useMonte = () =>
     () => false,
   );
 
-type Etat = "inconnu" | "impossible" | "ios" | "refusee" | "prete" | "active";
+export type Etat = "inconnu" | "impossible" | "ios" | "refusee" | "prete" | "active";
 
 /** Ce navigateur a choisi de ne plus être prévenu : on ne le réinscrit pas en douce. */
 const CLE_COUPEE = "mb_notifs_coupees";
@@ -152,6 +152,29 @@ function lire(): Etat {
   if (Notification.permission === "denied") return "refusee";
   if (Notification.permission === "granted") return lireLocal(CLE_COUPEE) ? "prete" : "active";
   return "prete";
+}
+
+export type CanalPush = {
+  cleVapid: string;
+  firebase?: ConfigFirebase | null;
+  cleWebPushFirebase?: string;
+};
+
+/**
+ * Brancher les notifications de ce navigateur, depuis n'importe quel bouton
+ * qui en a besoin (« Me prévenir » de l'accueil, par exemple) : demande la
+ * permission si elle n'est pas donnée, puis inscrit l'appareil. Rend l'état
+ * obtenu, pour que l'appelant puisse expliquer un refus.
+ */
+export async function brancherNotifications({ cleVapid, firebase, cleWebPushFirebase }: CanalPush): Promise<Etat> {
+  const etat = lire();
+  if (etat === "ios" || etat === "impossible" || etat === "refusee") return etat;
+  if (!cleVapid && !(firebase && cleWebPushFirebase)) return "impossible";
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  if (permission !== "granted") return permission === "denied" ? "refusee" : "prete";
+  await inscrire(cleVapid, firebase, cleWebPushFirebase);
+  ecrireLocal(CLE_COUPEE, null);
+  return "active";
 }
 
 export function ActiverNotifications({

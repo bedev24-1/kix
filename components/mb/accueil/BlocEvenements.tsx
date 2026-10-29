@@ -78,7 +78,7 @@ const PAUSE = 4000;
  * suivant en 0,7 s. Le trait du point actif se remplit pendant l'attente.
  * Un doigt posé l'arrête ; elle reprend quand on le lève.
  */
-function Bande({ autres }: { autres: Vignette[] }) {
+export function Bande({ autres, lecture = false }: { autres: Vignette[]; /** Un bouton lecture devant le texte : des rediffusions. */ lecture?: boolean }) {
   const n = autres.length;
   const [i, setI] = useState(0);
   const [anime, setAnime] = useState(true);
@@ -154,10 +154,17 @@ function Bande({ autres }: { autres: Vignette[] }) {
           >
             <Photo src={v.image} alt="" fill sizes="(max-width: 1024px) 430px, 1200px" className="pointer-events-none object-cover" />
             <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,12,9,.85)_0%,rgba(4,12,9,.5)_55%,rgba(4,12,9,.1))]" />
-            <span className="absolute inset-y-0 right-10 left-4 flex flex-col justify-center text-white">
-              <span className="text-[8.5px] font-bold tracking-[0.14em] text-gold uppercase">{v.quand}</span>
-              <span className="mt-0.5 truncate text-[13.5px] font-extrabold">{v.titre}</span>
-              <span className="mt-0.5 truncate text-[10px] text-white/75">{v.detail}</span>
+            <span className="absolute inset-y-0 right-10 left-4 flex items-center gap-[11px] text-white">
+              {lecture ? (
+                <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full border-[1.5px] border-white/70">
+                  <PlayIcon />
+                </span>
+              ) : null}
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[8.5px] font-bold tracking-[0.14em] text-gold uppercase">{v.quand}</span>
+                <span className="mt-0.5 truncate text-[13.5px] font-extrabold">{v.titre}</span>
+                <span className="mt-0.5 truncate text-[10px] text-white/75">{v.detail}</span>
+              </span>
             </span>
           </Link>
         ))}
@@ -190,6 +197,14 @@ function Bande({ autres }: { autres: Vignette[] }) {
         <ChevronRightIcon size={15} strokeWidth={2.4} />
       </Link>
     </div>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden className="ml-0.5 fill-white">
+      <path d="M7 4.5v15l12-7.5z" />
+    </svg>
   );
 }
 

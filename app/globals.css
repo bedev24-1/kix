@@ -792,3 +792,13 @@
   from { transform: scale(0.7); }
   to { transform: scale(1); }
 }
+/* « Me prévenir » : les ondes qui partent du doigt, de moins en moins opaques. */
+@keyframes mb-onde {
+  0% { transform: scale(0.2); opacity: var(--a); }
+  100% { transform: scale(11); opacity: 0; }
+}
+/* Le voyant « en direct » en veille. */
+@keyframes mb-veille {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
