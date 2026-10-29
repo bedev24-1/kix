@@ -339,3 +339,24 @@ export const MasterMark = ({ size = 30, className }: { size?: number; className?
     style={{ width: size, height: size, objectFit: "contain" }}
   />
 );
+
+export const VapeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="8.5" y="3" width="7" height="18" rx="3" />
+    <path d="M8.5 8h7" />
+  </Svg>
+);
+
+export const CapIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 9 12 5l9 4-9 4z" />
+    <path d="M7 11v4c0 1.5 2.5 3 5 3s5-1.5 5-3v-4" />
+  </Svg>
+);
+
+export const GiftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="8" width="17" height="12" rx="2" />
+    <path d="M12 8v12M3.5 12h17M12 8c-1.5-3-5-3.5-5-1.5S10 8 12 8zm0 0c1.5-3 5-3.5 5-1.5S14 8 12 8z" />
+  </Svg>
+);

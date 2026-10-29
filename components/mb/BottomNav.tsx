@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { BoltIcon, CartIcon, HomeIcon, QrIcon, UserIcon } from "@/components/icons";
+import { BoltIcon, CartIcon, HomeIcon, MasterMark, QrIcon, UserIcon } from "@/components/icons";
 import { useCart } from "@/lib/cart";
+import { noterDepart, poserBarre, useBarre } from "@/lib/barre-nav";
 
 /**
  * Cinq places, pour cinq intentions.
@@ -51,6 +52,15 @@ export function BottomNav() {
   // devient la bulle posée sur le tiroir (components/shop/fiche) : le bouton
   // QR rentre dans la barre, la barre rétrécit, puis disparaît.
   const repliee = estFicheProduit(pathname);
+  // L'écran immersif du Shop met la barre en scène : elle se rassemble en un
+  // point au bout à droite, puis ce point monte se poser à côté du bouton
+  // d'or. Le retour se fait plus vite que l'aller.
+  const scene = useBarre();
+  const bulle = scene !== "normale";
+  const viser = (href: string) => {
+    noterDepart(pathname);
+    setVise(href);
+  };
 
   return (
     <nav
@@ -63,17 +73,38 @@ export function BottomNav() {
           reste sombre sur toutes les pages, claires comme sombres. */}
       <div
         className={cn(
-          "relative flex h-[60px] origin-[92%_50%] items-center gap-1.5 rounded-[32px] border border-[#f3eee2]/10 bg-[#0a1e16]/80 px-2 shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-[16px] transition-all duration-[350ms] ease-[cubic-bezier(.2,.7,.3,1)] motion-reduce:transition-none",
+          "relative flex h-[60px] w-[276px] origin-[92%_50%] items-center gap-1.5 overflow-hidden rounded-[32px] border border-[#f3eee2]/10 bg-[#0a1e16]/80 px-2 shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-[16px] transition-all duration-[350ms] ease-[cubic-bezier(.2,.7,.3,1)] motion-reduce:transition-none",
           repliee && "pointer-events-none translate-y-3 scale-x-[.16] scale-y-[.66] opacity-0",
+          bulle && "gap-0 border-gold/70 px-0 ease-[cubic-bezier(.45,0,.25,1)]",
         )}
+        style={
+          bulle
+            ? {
+                width: 52,
+                height: 52,
+                translate: `calc((min(100vw, 430px) - 40px - 52px) / 2) ${scene === "montee" ? "-74px" : "0px"}`,
+                transitionDuration: scene === "montee" ? "1100ms" : "900ms",
+              }
+            : undefined
+        }
       >
+        {bulle ? (
+          <button
+            type="button"
+            onClick={() => poserBarre("normale")}
+            aria-label="Rouvrir le menu"
+            className="absolute inset-0 z-20 grid place-items-center [animation:mb-apparait_.5s_.6s_both]"
+          >
+            <MasterMark size={28} />
+          </button>
+        ) : null}
         {/* La pastille ivoire glisse d'un onglet à l'autre en s'étirant comme
             une goutte, passe sous le QR et se pose avec un petit rebond. */}
         <span
           aria-hidden
           className={cn(
             "absolute top-[6px] left-0 h-[46px] w-[46px] transition-[translate,opacity] duration-500 ease-[cubic-bezier(.65,0,.35,1)] motion-reduce:transition-none",
-            rang < 0 && "opacity-0",
+            (rang < 0 || bulle) && "opacity-0",
           )}
           style={{ translate: `${POSES[Math.max(rang, 0)]}px 0` }}
         >
@@ -84,16 +115,17 @@ export function BottomNav() {
         </span>
 
         {left.map((item) => (
-          <NavItem key={item.href} {...item} active={isActive(item.href)} onPress={() => setVise(item.href)} />
+          <NavItem key={item.href} {...item} active={isActive(item.href)} cache={bulle} onPress={() => viser(item.href)} />
         ))}
 
         <Link
           href="/app/pass"
           aria-label="Mon Master Pass"
-          onClick={() => setVise("/app/pass")}
+          onClick={() => viser("/app/pass")}
           className={cn(
-            "press relative z-10 grid h-[52px] w-[52px] place-items-center rounded-full bg-gold text-gold-ink transition-all duration-300 hover:brightness-105",
+            "press relative z-10 grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-gold text-gold-ink transition-all duration-300 hover:brightness-105",
             repliee && "scale-75",
+            bulle && "scale-50 opacity-0",
           )}
         >
           <QrIcon size={22} />
@@ -105,7 +137,8 @@ export function BottomNav() {
             {...item}
             active={isActive(item.href)}
             badge={item.href === "/app/shop" ? count : 0}
-            onPress={() => setVise(item.href)}
+            cache={bulle}
+            onPress={() => viser(item.href)}
           />
         ))}
       </div>
@@ -119,6 +152,7 @@ function NavItem({
   Icon,
   active,
   badge = 0,
+  cache = false,
   onPress,
 }: {
   href: string;
@@ -126,6 +160,8 @@ function NavItem({
   Icon: (p: { size?: number }) => React.ReactElement;
   active: boolean;
   badge?: number;
+  /** La barre est rassemblée en bulle : les onglets s'effacent. */
+  cache?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -135,7 +171,8 @@ function NavItem({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "press relative z-10 grid h-[46px] w-[46px] place-items-center rounded-full transition-colors duration-300",
+        "press relative z-10 grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full transition-[color,opacity,transform] duration-300",
+        cache && "scale-50 opacity-0",
         active ? "text-[#06190f] delay-150" : "text-[#f3eee2]/55 hover:text-[#f3eee2]/85",
       )}
     >

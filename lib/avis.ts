@@ -136,3 +136,20 @@ export async function ventesRecentes(productId: string): Promise<number> {
     .where(and(eq(orderItems.productId, productId), inArray(orders.status, ACHETEES), gte(orders.createdAt, depuis)));
   return ligne?.n ?? 0;
 }
+
+/** Les articles les plus vendus sur les 7 derniers jours, avec leur nombre de ventes. */
+export async function plusVendus(limite = 6) {
+  const depuis = new Date(Date.now() - 7 * 86_400_000);
+  const ventes = await db
+    .select({ id: orderItems.productId, n: sql<number>`coalesce(sum(${orderItems.qty}), 0)::int` })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(inArray(orders.status, ACHETEES), gte(orders.createdAt, depuis)))
+    .groupBy(orderItems.productId);
+  const tous = await db.select().from(products).where(eq(products.active, true));
+  const n = (id: string) => ventes.find((v) => v.id === id)?.n ?? 0;
+  return tous
+    .map((p) => ({ produit: p, vendus: n(p.id) }))
+    .sort((a, b) => b.vendus - a.vendus || a.produit.price - b.produit.price)
+    .slice(0, limite);
+}

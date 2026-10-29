@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Photo } from "@/components/ui/Photo";
-import { BellIcon, MasterMark, PlusIcon, SearchIcon } from "@/components/icons";
+import { BellIcon, MasterMark, PlusIcon } from "@/components/icons";
+import { RechercheBulle } from "@/components/ui/RechercheBulle";
 import { cn } from "@/lib/cn";
 import type { User } from "@/db";
 
@@ -65,27 +66,7 @@ export function EnTeteAccueil({
         </Link>
       </div>
 
-      {/* La recherche : la loupe est une bulle dans la barre. Discrète au
-          repos, elle passe à l'or dès qu'on tape et devient le bouton. */}
-      <form
-        action="/app/recherche"
-        className="group mt-1 flex h-10 items-center rounded-full border border-ink/12 bg-ink/5 pr-1 pl-4 transition-colors has-[input:not(:placeholder-shown)]:border-gold/55"
-      >
-        <label className="grow">
-          <span className="sr-only">Rechercher</span>
-          <input
-            name="q"
-            placeholder="Salle, tournoi, puff…"
-            className="h-full w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink/50"
-          />
-        </label>
-        <button
-          aria-label="Rechercher"
-          className="press grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink/10 text-ink transition-colors group-has-[input:not(:placeholder-shown)]:bg-gold group-has-[input:not(:placeholder-shown)]:text-gold-ink"
-        >
-          <SearchIcon size={15} />
-        </button>
-      </form>
+      <RechercheBulle action="/app/recherche" placeholder="Salle, tournoi, puff…" className="mt-1" />
     </header>
   );
 }
