@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { BoltIcon, CartIcon, HomeIcon, QrIcon, UserIcon } from "@/components/icons";
 import { useCart } from "@/lib/cart";
@@ -25,6 +26,9 @@ const right = [
   { href: "/app/shop", label: "Shop", Icon: CartIcon },
   { href: "/app/rewards", label: "Profil", Icon: UserIcon },
 ];
+const ONGLETS = [...left, ...right];
+/** Où se pose la pastille sous chaque onglet : 8 px de marge, cases de 46 px, QR de 52, écarts de 6. */
+const POSES = [8, 60, 170, 222];
 
 /** Une fiche produit : la barre s'y efface au profit du tiroir d'achat et de sa bulle. */
 export const estFicheProduit = (chemin: string) => /^\/app\/shop\/[^/]+$/.test(chemin);
@@ -32,7 +36,17 @@ export const estFicheProduit = (chemin: string) => /^\/app\/shop\/[^/]+$/.test(c
 export function BottomNav() {
   const pathname = usePathname();
   const { count } = useCart();
-  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  // L'onglet visé se marque dès le toucher, sans attendre que la page
+  // suivante arrive : la pastille part tout de suite.
+  const [vise, setVise] = useState<string | null>(null);
+  const [cheminVu, setCheminVu] = useState(pathname);
+  if (cheminVu !== pathname) {
+    setCheminVu(pathname);
+    setVise(null);
+  }
+  const isActive = (href: string) =>
+    vise ? vise === href : href === "/app" ? pathname === "/app" : pathname.startsWith(href);
+  const rang = ONGLETS.findIndex((o) => isActive(o.href));
   // Sur une fiche, la barre se resserre et file vers la droite, où elle
   // devient la bulle posée sur le tiroir (components/shop/fiche) : le bouton
   // QR rentre dans la barre, la barre rétrécit, puis disparaît.
@@ -53,15 +67,32 @@ export function BottomNav() {
           repliee && "pointer-events-none translate-y-3 scale-x-[.16] scale-y-[.66] opacity-0",
         )}
       >
+        {/* La pastille ivoire glisse d'un onglet à l'autre en s'étirant comme
+            une goutte, passe sous le QR et se pose avec un petit rebond. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute top-[6px] left-0 h-[46px] w-[46px] transition-[translate,opacity] duration-500 ease-[cubic-bezier(.65,0,.35,1)] motion-reduce:transition-none",
+            rang < 0 && "opacity-0",
+          )}
+          style={{ translate: `${POSES[Math.max(rang, 0)]}px 0` }}
+        >
+          <span
+            key={rang}
+            className="block h-full w-full rounded-full bg-[#f3eee2] [animation:mb-goutte_.5s_cubic-bezier(.65,0,.35,1)] motion-reduce:animate-none"
+          />
+        </span>
+
         {left.map((item) => (
-          <NavItem key={item.href} {...item} active={isActive(item.href)} />
+          <NavItem key={item.href} {...item} active={isActive(item.href)} onPress={() => setVise(item.href)} />
         ))}
 
         <Link
           href="/app/pass"
           aria-label="Mon Master Pass"
+          onClick={() => setVise("/app/pass")}
           className={cn(
-            "press grid h-[52px] w-[52px] place-items-center rounded-full bg-gold text-gold-ink transition-all duration-300 hover:brightness-105",
+            "press relative z-10 grid h-[52px] w-[52px] place-items-center rounded-full bg-gold text-gold-ink transition-all duration-300 hover:brightness-105",
             repliee && "scale-75",
           )}
         >
@@ -74,6 +105,7 @@ export function BottomNav() {
             {...item}
             active={isActive(item.href)}
             badge={item.href === "/app/shop" ? count : 0}
+            onPress={() => setVise(item.href)}
           />
         ))}
       </div>
@@ -87,24 +119,29 @@ function NavItem({
   Icon,
   active,
   badge = 0,
+  onPress,
 }: {
   href: string;
   label: string;
   Icon: (p: { size?: number }) => React.ReactElement;
   active: boolean;
   badge?: number;
+  onPress: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onPress}
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "press relative grid h-[46px] w-[46px] place-items-center rounded-full transition-colors duration-300",
-        active ? "bg-[#f3eee2] text-[#06190f]" : "text-[#f3eee2]/55 hover:text-[#f3eee2]/85",
+        "press relative z-10 grid h-[46px] w-[46px] place-items-center rounded-full transition-colors duration-300",
+        active ? "text-[#06190f] delay-150" : "text-[#f3eee2]/55 hover:text-[#f3eee2]/85",
       )}
     >
-      <Icon size={20} />
+      <span className={cn("grid", active && "[animation:mb-icone_.5s_cubic-bezier(.3,1.6,.5,1)_.15s_both] motion-reduce:animate-none")}>
+        <Icon size={20} />
+      </span>
       {badge > 0 ? (
         <span className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[9px] font-semibold text-gold-ink">
           {badge}

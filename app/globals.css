@@ -57,16 +57,12 @@
   --mb-shadow: 0 24px 50px rgba(8, 32, 26, 0.14);
 }
 
-/* La partie basse de l'accueil : un blanc presque pur, à peine teinté de
-   vert, sans ombres — les cartes s'en détachent par un filet. Posée sur un
-   élément qui porte déjà data-theme="light". */
-.zone-claire {
-  --mb-bg: #f7f9f7;
-  --mb-surface: #ffffff;
-  --mb-line: #e2e8e4;
-  --mb-line-strong: #d3dbd6;
-  --mb-ink: #0e1512;
-  --mb-gold-text: #9a7414;
+/* La partie basse de l'accueil : un vert sapin, un cran plus clair que le
+   haut, pour le contraste. Posée sur un élément en data-theme="dark". */
+.zone-verte {
+  --mb-bg: #123628;
+  --mb-surface: #184433;
+  --mb-line: rgba(232, 222, 186, 0.13);
   --mb-shadow: none;
 }
 
@@ -782,4 +778,17 @@
 }
 @keyframes mb-pouls {
   50% { opacity: 0.25; }
+}
+
+/* Barre du bas : la pastille s'étire comme une goutte pendant qu'elle glisse,
+   puis se pose avec un petit rebond ; l'icône d'arrivée grossit un peu. */
+@keyframes mb-goutte {
+  0% { transform: scale(1, 1); }
+  45% { transform: scale(1.55, 0.82); }
+  75% { transform: scale(0.94, 1.05); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes mb-icone {
+  from { transform: scale(0.7); }
+  to { transform: scale(1); }
 }

@@ -85,11 +85,10 @@ export default async function AccueilPage() {
         </div>
       </div>
 
-      {/* Sous les directs, un passage court et net du vert au blanc, puis un
-          blanc presque pur jusqu'en bas. Pas d'ombres : des filets fins. */}
+      {/* Sous les directs, un passage court du vert profond au vert sapin,
+          un cran plus clair, jusqu'en bas. Pas d'ombres : des filets fins. */}
       <div
-        data-theme="light"
-        className="zone-claire relative mt-2 flex flex-col gap-[22px] bg-[linear-gradient(180deg,rgba(9,27,19,0)_0,#3e554b_10px,#c3cec8_20px,#f7f9f7_28px)] px-[11px] pt-[34px] pb-36 text-ink md:px-7 lg:mt-8 lg:rounded-panel lg:bg-bg lg:bg-none lg:px-8 lg:pt-8 lg:pb-10"
+        className="zone-verte relative mt-2 flex flex-col gap-[22px] bg-[linear-gradient(180deg,rgba(7,26,19,0)_0,#123628_28px)] px-[11px] pt-[34px] pb-36 text-ink md:px-7 lg:mt-8 lg:rounded-panel lg:bg-bg lg:bg-none lg:px-8 lg:pt-8 lg:pb-10"
       >
         <Acces />
         <div className="flex flex-col gap-2.5 px-[9px] md:px-0 lg:gap-4">
