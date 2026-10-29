@@ -24,6 +24,7 @@ export default async function AdminVenues() {
           <Field label="Tables libres" name="freeTables" type="number" defaultValue={0} />
           <Field label="Prix du jeton (F)" name="tokenPrice" type="number" defaultValue={400} />
           <ImageField name="image" dossier="salles" defaultValue="/img/hall-dark.jpg" className="lg:col-span-2" />
+          <ImageField name="logo" dossier="logos" label="Logo (facultatif)" className="lg:col-span-2" />
           <input type="hidden" name="active" value="on" />
           <div className="flex items-end">
             <SubmitButton>Créer la salle</SubmitButton>
@@ -72,6 +73,7 @@ export default async function AdminVenues() {
                       <Field label="Jeton (F)" name="tokenPrice" type="number" defaultValue={venue.tokenPrice} />
                     </div>
                     <ImageField name="image" dossier="salles" defaultValue={venue.image} />
+                    <ImageField name="logo" dossier="logos" label="Logo" defaultValue={venue.logo} />
                     <input type="hidden" name="address" value={venue.address} />
                     <input type="hidden" name="active" value="on" />
                     <SubmitButton />

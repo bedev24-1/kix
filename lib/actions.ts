@@ -842,6 +842,7 @@ export async function saveVenue(formData: FormData) {
     freeTables: num(formData, "freeTables"),
     tokenPrice: num(formData, "tokenPrice"),
     image: str(formData, "image") || "/img/hall-dark.jpg",
+    logo: str(formData, "logo"),
     active: bool(formData, "active"),
   };
 

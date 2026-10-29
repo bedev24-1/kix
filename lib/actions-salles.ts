@@ -30,6 +30,18 @@ export async function definirPositionSalle(venueId: string, lat: number, lng: nu
   return { ok: true };
 }
 
+/** Le logo de la salle. L'administration pour toutes ; un gérant pour la sienne. */
+export async function definirLogoSalle(formData: FormData): Promise<void> {
+  const moi = await requireRole("manager", "admin");
+  const venueId = String(formData.get("venueId") ?? "");
+  if (moi.role !== "admin" && moi.venueId !== venueId) return;
+  const logo = String(formData.get("logo") ?? "").trim();
+  await db.update(venues).set({ logo }).where(eq(venues.id, venueId));
+  revalidatePath("/gerant/salle");
+  revalidatePath("/admin/salles");
+  revalidatePath("/app");
+}
+
 /** « Je suis à la salle. » Remplace une éventuelle présence ailleurs. */
 export async function jeSuisLa(venueId: string, lat?: number | null, lng?: number | null): Promise<Resultat> {
   const moi = await requireUser();

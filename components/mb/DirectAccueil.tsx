@@ -1,12 +1,10 @@
 "use client";
 
-import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { useLive } from "@/lib/useLive";
-import { LiveDot } from "@/components/live/LiveDot";
+import { DirectsEnCours } from "@/components/mb/accueil/DirectsEnCours";
 import { Card } from "@/components/ui/Card";
 import { ArrowRightIcon, BoltIcon } from "@/components/icons";
-import { group } from "@/lib/format";
 import type { Encours } from "@/lib/stream";
 
 /**
@@ -44,47 +42,5 @@ export function DirectAccueil({ initial, vide }: { initial: Encours; /** Ce qui 
     );
   }
 
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-2.5 text-[15px] font-semibold lg:text-[17px]">
-          En direct maintenant
-          <LiveDot label={`${data.total}`} connected />
-        </h2>
-        <Link href="/direct" className="press text-[12px] text-gold-text">
-          Tout voir
-        </Link>
-      </div>
-
-      {/* Bande défilante : sur un téléphone, on fait glisser plutôt que de
-          descendre — l'accueil garde sa hauteur quel que soit le nombre de
-          caméras allumées. */}
-      <div className="-mx-5 flex md:-mx-7 gap-3 overflow-x-auto px-5 md:px-7 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:px-0">
-        {data.directs.slice(0, 6).map((d) => (
-          <Link
-            key={d.id}
-            href={`/direct/${d.id}`}
-            className="press relative block h-36 w-60 shrink-0 overflow-hidden rounded-panel border border-line lg:h-40 lg:w-auto"
-          >
-            <Photo src={d.image} alt="" fill sizes="(max-width: 1024px) 240px, 320px" className="object-cover" />
-            <span className="absolute inset-0 bg-linear-to-t from-black/90 via-black/35 to-black/10" />
-
-            <span className="absolute top-2.5 left-2.5">
-              <LiveDot className="bg-black/65 backdrop-blur-md" />
-            </span>
-            <span className="absolute top-2.5 right-2.5 rounded-full bg-black/65 px-2.5 py-1 text-[10.5px] text-white/85 backdrop-blur-md">
-              {group(d.spectateurs)}
-            </span>
-
-            <span className="absolute inset-x-3 bottom-2.5 flex flex-col gap-0.5 text-white">
-              <span className="truncate text-[13.5px] font-semibold">{d.titre}</span>
-              <span className="truncate text-[11.5px] text-white/70">
-                {d.salle} · {d.rubrique}
-              </span>
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
+  return <DirectsEnCours directs={data.directs} />;
 }

@@ -258,17 +258,42 @@ export async function getDirectsEnCours() {
     .orderBy(desc(streams.viewers))
     .limit(8);
 
+  // Le match filmé, quand il y en a un : les joueurs et le score font
+  // l'affiche de l'accueil.
+  const matchIds = rows.map((r) => r.stream.matchId).filter((x): x is string => Boolean(x));
+  const jeux = matchIds.length ? await db.select().from(matches).where(inArray(matches.id, matchIds)) : [];
+  const joueurIds = [...new Set(jeux.flatMap((m) => [m.playerAId, m.playerBId]))];
+  const gens = joueurIds.length
+    ? await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(inArray(users.id, joueurIds))
+    : [];
+  const qui = (id: string) => {
+    const g = gens.find((p) => p.id === id);
+    return { nom: g?.name ?? "Joueur", avatar: g?.avatar ?? null };
+  };
+
   return {
     total: rows.length,
     spectateurs: rows.reduce((n, r) => n + r.stream.viewers, 0),
-    directs: rows.map(({ stream, venue }) => ({
-      id: stream.id,
-      titre: stream.title,
-      salle: venue.name,
-      image: stream.poster ?? venue.image,
-      rubrique: disciplineLabel[stream.discipline] ?? stream.discipline,
-      spectateurs: stream.viewers,
-    })),
+    directs: rows.map(({ stream, venue }) => {
+      const jeu = jeux.find((m) => m.id === stream.matchId);
+      return {
+        id: stream.id,
+        titre: stream.title,
+        salle: venue.name,
+        logo: venue.logo,
+        image: stream.poster ?? venue.image,
+        rubrique: disciplineLabel[stream.discipline] ?? stream.discipline,
+        spectateurs: stream.viewers,
+        match: jeu
+          ? {
+              etiquette: jeu.label,
+              course: jeu.target,
+              a: { ...qui(jeu.playerAId), score: jeu.scoreA, aLaTable: jeu.turnId === jeu.playerAId },
+              b: { ...qui(jeu.playerBId), score: jeu.scoreB, aLaTable: jeu.turnId === jeu.playerBId },
+            }
+          : null,
+      };
+    }),
   };
 }
 

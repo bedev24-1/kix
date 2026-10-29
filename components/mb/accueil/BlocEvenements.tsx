@@ -21,7 +21,17 @@ export type Affiche = {
   fini: boolean;
 };
 
-export type Vignette = { href: string; titre: string; quand: string; detail: string; image: string };
+export type Vignette = {
+  href: string;
+  titre: string;
+  quand: string;
+  detail: string;
+  image: string;
+  /** Un direct : l'étiquette passe au rouge, avec son point qui bat. */
+  direct?: boolean;
+  /** Le score d'un match filmé, calé à droite. */
+  score?: [number, number] | null;
+};
 
 /**
  * Les événements de l'accueil, en un seul bloc.
@@ -78,7 +88,17 @@ const PAUSE = 4000;
  * suivant en 0,7 s. Le trait du point actif se remplit pendant l'attente.
  * Un doigt posé l'arrête ; elle reprend quand on le lève.
  */
-export function Bande({ autres, lecture = false }: { autres: Vignette[]; /** Un bouton lecture devant le texte : des rediffusions. */ lecture?: boolean }) {
+export function Bande({
+  autres,
+  lecture = false,
+  compacte = false,
+}: {
+  autres: Vignette[];
+  /** Un bouton lecture devant le texte : des rediffusions. */
+  lecture?: boolean;
+  /** 56 px au lieu de 64 : sous les directs. */
+  compacte?: boolean;
+}) {
   const n = autres.length;
   const [i, setI] = useState(0);
   const [anime, setAnime] = useState(true);
@@ -109,7 +129,7 @@ export function Bande({ autres, lecture = false }: { autres: Vignette[]; /** Un 
 
   return (
     <div
-      className="relative h-16 shrink-0 touch-pan-y overflow-hidden lg:h-24"
+      className={cn("relative shrink-0 touch-pan-y overflow-hidden lg:h-24", compacte ? "h-14" : "h-16")}
       onPointerDown={(e) => {
         depart.current = e.clientX;
         setTenu(true);
@@ -161,10 +181,30 @@ export function Bande({ autres, lecture = false }: { autres: Vignette[]; /** Un 
                 </span>
               ) : null}
               <span className="flex min-w-0 flex-col">
-                <span className="text-[8.5px] font-bold tracking-[0.14em] text-gold uppercase">{v.quand}</span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 text-[8.5px] font-bold tracking-[0.14em] uppercase",
+                    v.direct ? "text-[#ff7b72]" : "text-gold",
+                  )}
+                >
+                  {v.direct ? <span className="h-[5px] w-[5px] rounded-full bg-[#ff5a50] [animation:mb-pouls_1.2s_infinite]" /> : null}
+                  {v.quand}
+                </span>
                 <span className="mt-0.5 truncate text-[13.5px] font-extrabold">{v.titre}</span>
                 <span className="mt-0.5 truncate text-[10px] text-white/75">{v.detail}</span>
               </span>
+              {v.score ? (
+                <span className="ml-auto flex shrink-0 gap-[3px]">
+                  {v.score.map((n, j) => (
+                    <span
+                      key={j}
+                      className="grid h-[22px] min-w-5 place-items-center rounded-md border border-white/20 bg-[#05100b]/60 text-[11.5px] font-extrabold tabular-nums"
+                    >
+                      {n}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
             </span>
           </Link>
         ))}

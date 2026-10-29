@@ -7,6 +7,9 @@ import { getFloor, getVenueReservations } from "@/lib/queries";
 import { eq } from "drizzle-orm";
 import { db, venues } from "@/db";
 import { ChoixPosition } from "@/components/salles/ChoixPosition";
+import { ImageField } from "@/components/admin/ImageField";
+import { SubmitButton } from "@/components/admin/AdminUI";
+import { definirLogoSalle } from "@/lib/actions-salles";
 import { joueursActifs } from "@/lib/presences";
 import { requireRole } from "@/lib/session";
 import { f } from "@/lib/format";
@@ -130,6 +133,22 @@ export default async function SallePage() {
           </div>
           {salle ? <ChoixPosition venueId={salle.id} latitude={salle.latitude} longitude={salle.longitude} /> : null}
         </Card>
+
+        {salle ? (
+          <Card shape="panel" className="flex flex-col gap-3 p-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-[17px]">Logo de la salle</h2>
+              <p className="text-[12.5px] text-muted">
+                Il s&apos;affiche en petit, en rond, sur tes directs à l&apos;accueil. Sans logo, ce sont tes initiales.
+              </p>
+            </div>
+            <form action={definirLogoSalle} className="flex flex-col gap-3">
+              <input type="hidden" name="venueId" value={salle.id} />
+              <ImageField name="logo" dossier="logos" label="Logo" defaultValue={salle.logo} />
+              <SubmitButton>Enregistrer le logo</SubmitButton>
+            </form>
+          </Card>
+        ) : null}
 
         <Card shape="panel" className="flex flex-col gap-3 p-5">
           <h2 className="text-[17px]">Joueurs actifs · {actifs.length}</h2>

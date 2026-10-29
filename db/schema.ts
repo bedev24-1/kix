@@ -44,6 +44,8 @@ export const venues = mb.table("venues", {
   tokenPrice: integer("token_price").notNull().default(400),
   distanceKm: real("distance_km").notNull().default(0),
   image: text("image").notNull().default("/img/hall-dark.jpg"),
+  /** Le logo de la salle, affiché en petit (toujours en rond) sur ses directs. Vide : ses initiales. */
+  logo: text("logo").notNull().default(""),
   /**
    * La position GPS de la salle, posée par l'administration ou le gérant.
    * Nulles tant qu'elle n'est pas renseignée : la salle n'apparaît alors pas
