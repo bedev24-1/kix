@@ -1051,6 +1051,28 @@ export const rappelsDirect = mb.table(
   (t) => [uniqueIndex("rappels_direct_user_idx").on(t.userId)],
 );
 
+/**
+ * Les commentaires d'un direct : ce que les spectateurs se disent pendant le
+ * match. Un message masqué par le diffuseur, le gérant ou l'administration
+ * reste en base, mais n'est plus montré.
+ */
+export const liveComments = mb.table(
+  "live_comments",
+  {
+    id: id(),
+    streamId: uuid("stream_id")
+      .notNull()
+      .references(() => streams.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    texte: text("texte").notNull(),
+    masque: boolean("masque").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("live_comments_stream_idx").on(t.streamId, t.createdAt)],
+);
+
 export const follows = mb.table(
   "follows",
   {

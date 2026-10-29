@@ -10,6 +10,8 @@ import { accessLabel, canWatch, getStream, levelLabel, type StreamAccess, type S
 import type { LiveState } from "@/components/live/MatchLive";
 import { hoteDuDirect } from "@/lib/suivis";
 import { requireUser } from "@/lib/session";
+import { Commentaires } from "@/components/live/Commentaires";
+import { derniersCommentaires, peutModerer } from "@/lib/commentaires";
 import { etatBarre } from "@/lib/barre";
 import type { EtatBarre } from "@/lib/barre-types";
 
@@ -114,6 +116,17 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         poster={card.venue.image}
         match={match}
       />
+
+      {/* La conversation du direct : réservée à ceux qui peuvent le regarder. */}
+      {access.ok ? (
+        <Commentaires
+          streamId={card.stream.id}
+          initial={await derniersCommentaires(card.stream)}
+          ouvert={card.stream.status === "live"}
+          moderateur={peutModerer(user, card.stream)}
+          moi={user.id}
+        />
+      ) : null}
 
       <Card shape="square" tone="dashed" className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3.5 text-[12px] text-muted">
         <span className="flex items-center gap-1.5">
