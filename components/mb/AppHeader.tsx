@@ -1,7 +1,5 @@
-import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
-import { BellIcon, ChevronDownIcon, ChevronLeftIcon, MasterMark, PinIcon } from "@/components/icons";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { BellIcon, ChevronLeftIcon } from "@/components/icons";
 import type { User } from "@/db";
 
 export function AppHeader({
@@ -21,7 +19,9 @@ export function AppHeader({
 }) {
   return (
     <>
-      {/* format bureau : la barre latérale porte déjà l'identité et le solde */}
+      {/* Format bureau seulement : la barre latérale porte déjà l'identité et le
+          solde. Sur téléphone, l'accueil a sa propre ligne du haut
+          (components/mb/accueil/EnTete). */}
       <header className="hidden items-end justify-between gap-4 border-b border-line pb-5 lg:flex">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[28px]">{title ?? `Bonsoir ${user.name.split(" ")[0]}`}</h1>
@@ -34,51 +34,6 @@ export function AppHeader({
           <BellIcon size={17} />
           {unread > 0 ? `${unread} notifications` : "Notifications"}
         </Link>
-      </header>
-
-      <header className="flex items-center justify-between gap-3 lg:hidden">
-      <div className="flex items-center gap-2.5">
-        <MasterMark />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[19px] leading-[19px] font-bold tracking-[0.14em]">MASTER BREAK</span>
-          <span className="flex items-center gap-1 text-[11px] text-muted">
-            <PinIcon size={11} />
-            {city} · {area}
-            <ChevronDownIcon size={9} />
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2.5">
-        <ThemeToggle />
-        <Link
-          href="/app/notifications"
-          aria-label={unread > 0 ? `${unread} notifications non lues` : "Notifications"}
-          className="glass relative grid h-11 w-11 place-items-center rounded-full"
-        >
-          <BellIcon size={19} />
-          {unread > 0 ? (
-            <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1.5 text-[10px] font-semibold text-gold-ink">
-              {unread}
-            </span>
-          ) : null}
-        </Link>
-        <Link href="/app/rewards" aria-label="Mon profil">
-          {user.avatar ? (
-            <Photo
-              src={user.avatar}
-              alt={user.name}
-              width={44}
-              height={44}
-              className="h-11 w-11 rounded-full border border-gold/45 object-cover"
-            />
-          ) : (
-            <span className="grid h-11 w-11 place-items-center rounded-full border border-gold/45 bg-surface text-[13px] font-semibold">
-              {user.name.slice(0, 2).toUpperCase()}
-            </span>
-          )}
-        </Link>
-      </div>
       </header>
     </>
   );

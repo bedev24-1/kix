@@ -42,11 +42,14 @@ export function BottomNav() {
     <nav
       aria-hidden={repliee || undefined}
       inert={repliee}
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:max-w-[34rem] lg:hidden"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-[430px] justify-center px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:max-w-[34rem] lg:hidden"
     >
+      {/* Une pastille flottante en verre sombre, icônes seules : l'onglet
+          actif dans un rond ivoire, le QR en or, posé dans la barre. Elle
+          reste sombre sur toutes les pages, claires comme sombres. */}
       <div
         className={cn(
-          "glass-strong relative flex h-17 origin-[92%_50%] items-center justify-between rounded-full px-6 transition-all duration-[350ms] ease-[cubic-bezier(.2,.7,.3,1)] motion-reduce:transition-none",
+          "relative flex h-[60px] origin-[92%_50%] items-center gap-1.5 rounded-[32px] border border-[#f3eee2]/10 bg-[#0a1e16]/80 px-2 shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-[16px] transition-all duration-[350ms] ease-[cubic-bezier(.2,.7,.3,1)] motion-reduce:transition-none",
           repliee && "pointer-events-none translate-y-3 scale-x-[.16] scale-y-[.66] opacity-0",
         )}
       >
@@ -58,11 +61,11 @@ export function BottomNav() {
           href="/app/pass"
           aria-label="Mon Master Pass"
           className={cn(
-            "press grid h-14 w-14 place-items-center rounded-full bg-gold text-gold-ink shadow-[0_10px_28px_rgba(217,180,80,0.35)] transition-all duration-300 hover:scale-105 hover:brightness-105",
-            repliee ? "mt-0 scale-75" : "-mt-11",
+            "press grid h-[52px] w-[52px] place-items-center rounded-full bg-gold text-gold-ink transition-all duration-300 hover:brightness-105",
+            repliee && "scale-75",
           )}
         >
-          <QrIcon size={25} />
+          <QrIcon size={22} />
         </Link>
 
         {right.map((item) => (
@@ -94,17 +97,16 @@ function NavItem({
   return (
     <Link
       href={href}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "press relative flex w-12 flex-col items-center gap-1 py-2 text-[9px] transition",
-        active ? "text-gold-text" : "text-faint hover:text-dim",
+        "press relative grid h-[46px] w-[46px] place-items-center rounded-full transition-colors duration-300",
+        active ? "bg-[#f3eee2] text-[#06190f]" : "text-[#f3eee2]/55 hover:text-[#f3eee2]/85",
       )}
     >
-      <span className={cn("transition-transform duration-300", active && "-translate-y-0.5 scale-110")}>
-        <Icon size={21} />
-      </span>
-      {label}
+      <Icon size={20} />
       {badge > 0 ? (
-        <span className="absolute top-0.5 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[9px] font-semibold text-gold-ink">
+        <span className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[9px] font-semibold text-gold-ink">
           {badge}
         </span>
       ) : null}

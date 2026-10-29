@@ -131,6 +131,16 @@ export async function getEvents(): Promise<(EventRow & { sponsorise: boolean })[
     .map(({ e }) => ({ ...e, sponsorise: promus.une.includes(e.id) || promus.sponsorises.has(e.id) }));
 }
 
+/** Les tournois jumeaux d'une liste d'événements : leur vraie date de début, pour le compte à rebours. */
+export async function tournoisDesEvenements(ids: string[]) {
+  if (!ids.length) return new Map<string, Date | null>();
+  const rows = await db
+    .select({ eventId: tournaments.eventId, startsAt: tournaments.startsAt })
+    .from(tournaments)
+    .where(and(inArray(tournaments.eventId, ids), isNull(tournaments.parentId)));
+  return new Map(rows.filter((r) => r.eventId).map((r) => [r.eventId as string, r.startsAt]));
+}
+
 export async function getEvent(slug: string) {
   const rows = await db.select().from(events).where(eq(events.slug, slug)).limit(1);
   return rows[0] ?? null;

@@ -6,7 +6,8 @@
  * couleurs sémantiques, jamais une valeur brute.
  * -------------------------------------------------------------------------- */
 
-:root {
+:root,
+[data-theme="dark"] {
   --mb-bg: #071a13;
   --mb-bg-2: #0b241a;
   --mb-surface: rgba(244, 239, 226, 0.06);
@@ -54,6 +55,19 @@
   --mb-warn: #b4551f;
   --mb-live: #0f9b57;
   --mb-shadow: 0 24px 50px rgba(8, 32, 26, 0.14);
+}
+
+/* La partie basse de l'accueil : un blanc presque pur, à peine teinté de
+   vert, sans ombres — les cartes s'en détachent par un filet. Posée sur un
+   élément qui porte déjà data-theme="light". */
+.zone-claire {
+  --mb-bg: #f7f9f7;
+  --mb-surface: #ffffff;
+  --mb-line: #e2e8e4;
+  --mb-line-strong: #d3dbd6;
+  --mb-ink: #0e1512;
+  --mb-gold-text: #9a7414;
+  --mb-shadow: none;
 }
 
 @theme inline {
@@ -749,4 +763,23 @@
 @keyframes mb-feuillet {
   from { transform: rotateX(-90deg); opacity: 0.4; }
   to { transform: none; opacity: 1; }
+}
+
+/* Accueil : la pièce « + » fait un seul tour rapide en sortant de la pastille. */
+@keyframes mb-piece {
+  from { transform: scale(0.4) rotateY(0deg); opacity: 0; }
+  to { transform: scale(1) rotateY(360deg); opacity: 1; }
+}
+/* Un chiffre qui change monte depuis le bas de sa case. */
+@keyframes mb-chiffre {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+/* Le trait du point actif se remplit pendant que l'événement est affiché. */
+@keyframes mb-remplit {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes mb-pouls {
+  50% { opacity: 0.25; }
 }

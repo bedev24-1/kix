@@ -2,6 +2,7 @@ import { Photo } from "@/components/ui/Photo";
 import Link from "next/link";
 import { BadgeCertifie } from "@/components/ui/BadgeCertifie";
 import { ScreenHeader } from "@/components/mb/AppHeader";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ConvertButton } from "@/components/mb/ConvertButton";
 import { CarteProfil } from "@/components/joueur/CarteProfil";
 import { ProfilsSpeciaux } from "@/components/joueur/ProfilsSpeciaux";
@@ -49,7 +50,13 @@ export default async function RewardsPage() {
 
   return (
     <>
-      <ScreenHeader title="Master Rank" subtitle="Chaque partie scannée compte des points, chaque tournoi te classe." />
+      {/* Le commutateur clair/sombre vivait dans la ligne du haut de l'accueil ;
+          elle porte désormais les jetons. Il rejoint le profil. */}
+      <ScreenHeader
+        title="Master Rank"
+        subtitle="Chaque partie scannée compte des points, chaque tournoi te classe."
+        action={<ThemeToggle className="lg:hidden" />}
+      />
 
       <CarteProfil
         nom={user.name}
