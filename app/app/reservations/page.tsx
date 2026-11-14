@@ -35,6 +35,8 @@ const when = (d: Date) =>
     month: "long",
     hour: "2-digit",
     minute: "2-digit",
+    // Le serveur tourne en UTC : l'heure s'affiche à l'heure du Cameroun, comme la salle la lit.
+    timeZone: "Africa/Douala",
   });
 
 export default async function ReservationsPage() {
