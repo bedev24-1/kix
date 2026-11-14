@@ -55,6 +55,12 @@ export const venues = mb.table("venues", {
   longitude: doublePrecision("longitude"),
   /** La salle autorise les joueurs à tenir eux-mêmes la feuille de match. */
   selfScoring: boolean("self_scoring").notNull().default(false),
+  /**
+   * Comment la salle se fait payer une réservation de table :
+   * « caisse » — rien en ligne, la réservation est confirmée tout de suite et se règle après la partie ;
+   * « acompte » — acompte Mobile Money en ligne avant de retenir la table.
+   */
+  paiementReservation: text("paiement_reservation").notNull().default("caisse"),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -840,6 +846,32 @@ export const reservations = mb.table(
     index("reservations_venue_idx").on(t.venueId),
     index("reservations_user_idx").on(t.userId),
     index("reservations_starts_idx").on(t.startsAt),
+  ],
+);
+
+/**
+ * Créneaux déjà pris chez une salle partenaire, hors Master Break (réservation prise au
+ * comptoir, par exemple). La salle les envoie par son API ; ils bloquent la réservation en ligne.
+ */
+export const creneauxExternes = mb.table(
+  "creneaux_externes",
+  {
+    id: id(),
+    venueId: uuid("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    tableId: uuid("table_id")
+      .notNull()
+      .references(() => venueTables.id, { onDelete: "cascade" }),
+    /** Identifiant du créneau chez la salle. */
+    reference: text("reference").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("creneaux_externes_ref_idx").on(t.venueId, t.reference),
+    index("creneaux_externes_table_idx").on(t.tableId, t.startsAt),
   ],
 );
 

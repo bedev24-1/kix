@@ -1,4 +1,4 @@
-import { Drawer, Field, PageHead, Pill, SubmitButton, Table, Td } from "@/components/admin/AdminUI";
+import { Drawer, Field, PageHead, Pill, Select, SubmitButton, Table, Td } from "@/components/admin/AdminUI";
 import { ImageField } from "@/components/admin/ImageField";
 import { deleteVenue, saveVenue } from "@/lib/actions";
 import { getAllVenues } from "@/lib/queries";
@@ -72,6 +72,7 @@ export default async function AdminVenues() {
                       <Field label="Libres" name="freeTables" type="number" defaultValue={venue.freeTables} />
                       <Field label="Jeton (F)" name="tokenPrice" type="number" defaultValue={venue.tokenPrice} />
                     </div>
+                    <Select label="Paiement des réservations" name="paiementReservation" defaultValue={venue.paiementReservation} options={[{ value: "caisse", label: "À la caisse, après la partie" }, { value: "acompte", label: "Acompte Mobile Money en ligne" }]} />
                     <ImageField name="image" dossier="salles" defaultValue={venue.image} />
                     <ImageField name="logo" dossier="logos" label="Logo" defaultValue={venue.logo} />
                     <input type="hidden" name="address" value={venue.address} />

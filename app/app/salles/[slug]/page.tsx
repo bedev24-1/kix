@@ -115,7 +115,9 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
           </span>
         </div>
         <p className="text-[12.5px] leading-5 text-muted">
-          L&apos;acompte retient la table et se déduit de ta note à l&apos;arrivée.
+          {venue.paiementReservation === "acompte"
+            ? "L’acompte retient la table et se déduit de ta note à l’arrivée."
+            : "Réserve sans rien payer en ligne : tu règles à la caisse après la partie."}
         </p>
       </div>
 
@@ -129,7 +131,7 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
           </p>
         </Card>
       ) : (
-        <BookTable floor={floor} phone={user.phone} />
+        <BookTable floor={floor} phone={user.phone} caisse={venue.paiementReservation !== "acompte"} />
       )}
 
       <Link

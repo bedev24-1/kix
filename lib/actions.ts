@@ -4,6 +4,7 @@ import { estAtout, lireSpecs } from "@/lib/atouts";
 import { lireSexe, placesPour, refusDeSexe } from "@/lib/sexe";
 import { periode } from "@/lib/periode";
 import { lireCagnottes, totalCagnottes } from "@/lib/cagnottes";
+import { publierReservation } from "@/lib/partenaires";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -35,6 +36,7 @@ import {
   productVariants,
   purchases,
   reservations,
+  creneauxExternes,
   scans,
   screens,
   streamPasses,
@@ -841,6 +843,7 @@ export async function saveVenue(formData: FormData) {
     tables: num(formData, "tables"),
     freeTables: num(formData, "freeTables"),
     tokenPrice: num(formData, "tokenPrice"),
+    paiementReservation: str(formData, "paiementReservation") === "acompte" ? "acompte" : "caisse",
     image: str(formData, "image") || "/img/hall-dark.jpg",
     logo: str(formData, "logo"),
     active: bool(formData, "active"),
@@ -1267,7 +1270,7 @@ function overlaps(startsAt: Date, endsAt: Date) {
 }
 
 export type ReservationResult =
-  | { ok: true; reference: string; instruction?: string; deposit: number }
+  | { ok: true; reference: string; instruction?: string; deposit: number; caisse?: boolean }
   | { ok: false; error: string };
 
 /**
@@ -1302,6 +1305,35 @@ export async function reserveTable(
     .where(and(eq(reservations.tableId, tableId), overlaps(startsAt, endsAt)))
     .limit(1);
   if (clash[0]) return { ok: false, error: "Ce créneau vient d'être pris" };
+  // Un créneau déjà pris chez la salle elle-même (réservation au comptoir, par exemple).
+  const pris = await db
+    .select({ id: creneauxExternes.id })
+    .from(creneauxExternes)
+    .where(and(eq(creneauxExternes.tableId, tableId), lt(creneauxExternes.startsAt, endsAt), gt(creneauxExternes.endsAt, startsAt)))
+    .limit(1);
+  if (pris[0]) return { ok: false, error: "Cette table est déjà retenue à cette heure à la salle" };
+
+  // Salle « paiement à la caisse » : rien en ligne. La réservation est confirmée tout de suite,
+  // la partie se règle à la caisse après avoir joué.
+  const salle = (await db.select({ paiement: venues.paiementReservation, nom: venues.name }).from(venues).where(eq(venues.id, table.venueId)).limit(1))[0];
+  if (salle?.paiement !== "acompte") {
+    const ref = uid();
+    await db.insert(reservations).values({
+      id: ref, venueId: table.venueId, tableId, userId: user.id, startsAt, minutes, players,
+      deposit: 0, note: note.slice(0, 200), status: "confirmed",
+    });
+    await notify(
+      user.id,
+      "Table réservée",
+      `Table ${table.label} · ${minutes} min chez ${salle?.nom ?? "la salle"}. Tu règles à la caisse après la partie ; la table est gardée 20 minutes après l'heure.`,
+      "reservation",
+      "/app/reservations",
+    );
+    await publierReservation(ref);
+    revalidatePath("/app/reservations");
+    revalidatePath(`/gerant/salle`);
+    return { ok: true, reference: ref, deposit: 0, caisse: true };
+  }
 
   const id = uid();
   await db.insert(reservations).values({
@@ -1341,9 +1373,10 @@ export async function cancelReservation(id: string) {
   if (!["pending", "confirmed"].includes(booking.status)) return;
 
   await db.update(reservations).set({ status: "cancelled" }).where(eq(reservations.id, id));
-  if (booking.tableId) {
+  if (booking.tableId && booking.deposit > 0) {
     await db.update(venueTables).set({ status: "free" }).where(eq(venueTables.id, booking.tableId));
   }
+  await publierReservation(id);
   revalidatePath("/app/reservations");
   revalidatePath("/gerant/salle");
 }
@@ -1390,6 +1423,7 @@ export async function seatReservation(id: string) {
     table ? `Il s'installe à la table ${table.label}.` : "Sa table vient d'être installée.",
   );
 
+  await publierReservation(id);
   revalidatePath("/gerant/salle");
   revalidatePath("/app/reservations");
 }
@@ -1407,6 +1441,7 @@ export async function closeReservation(id: string, outcome: "done" | "no_show" =
   if (booking.tableId) {
     await db.update(venueTables).set({ status: "free" }).where(eq(venueTables.id, booking.tableId));
   }
+  await publierReservation(id);
 
   revalidatePath("/gerant/salle");
   revalidatePath("/gerant/service");

@@ -463,6 +463,13 @@
       "when": 1790618403000,
       "tag": "0065_commentaires-direct",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790704803000,
+      "tag": "0066_reservation-caisse-partenaires",
+      "breakpoints": true
     }
   ]
 }

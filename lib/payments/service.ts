@@ -456,6 +456,8 @@ async function fulfilReservation(tx: Tx, payment: Payment) {
     "/app/reservations",
     tx,
   );
+  // La salle partenaire en est prévenue une fois la transaction validée.
+  setTimeout(() => void import("@/lib/partenaires").then((m) => m.publierReservation(booking.id)), 2000);
 }
 
 /**

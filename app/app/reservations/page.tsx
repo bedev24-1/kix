@@ -45,7 +45,7 @@ export default async function ReservationsPage() {
     <>
       <ScreenHeader
         title="Mes réservations"
-        subtitle="Ta table est gardée jusqu'à l'heure dite ; l'acompte se déduit de ta note."
+        subtitle="Ta table est gardée jusqu'à 20 minutes après l'heure dite."
         back="/app/salles"
       />
 
@@ -100,7 +100,11 @@ export default async function ReservationsPage() {
                     <span className="text-ink">{reservation.players} joueurs</span>
                   </span>
                   <span className="text-muted">
-                    Acompte <span className="text-gold-text">{fcfa(reservation.deposit)}</span>
+                    {reservation.deposit > 0 ? (
+                      <>Acompte <span className="text-gold-text">{fcfa(reservation.deposit)}</span></>
+                    ) : (
+                      <span className="text-gold-text">Paiement à la caisse</span>
+                    )}
                   </span>
                 </div>
 
@@ -110,7 +114,7 @@ export default async function ReservationsPage() {
                   </p>
                 ) : null}
 
-                {upcoming ? <CancelReservation id={reservation.id} /> : null}
+                {upcoming ? <CancelReservation id={reservation.id} acompte={reservation.deposit} /> : null}
               </Card>
             );
           })}

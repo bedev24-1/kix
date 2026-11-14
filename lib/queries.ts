@@ -13,6 +13,7 @@ import {
   productVariants,
   purchases,
   reservations,
+  creneauxExternes,
   scans,
   tickets,
   tokens,
@@ -627,6 +628,8 @@ export type FloorTable = {
   now: { reservation: Reservation; client: string } | null;
   /** Prochaine réservation de la journée. */
   next: { reservation: Reservation; client: string } | null;
+  /** Créneau pris à la salle elle-même (hors Master Break) : en cours, ou le prochain. */
+  externe: { maintenant: boolean; prochain: Date | null };
 };
 
 /**
@@ -635,7 +638,7 @@ export type FloorTable = {
  * mémoire — une salle a une dizaine de tables, pas mille.
  */
 export async function getFloor(venueId: string): Promise<FloorTable[]> {
-  const [tables, bookings] = await Promise.all([
+  const [tables, bookings, blocs] = await Promise.all([
     db
       .select()
       .from(venueTables)
@@ -653,16 +656,27 @@ export async function getFloor(venueId: string): Promise<FloorTable[]> {
         ),
       )
       .orderBy(reservations.startsAt),
+    db
+      .select()
+      .from(creneauxExternes)
+      .where(and(eq(creneauxExternes.venueId, venueId), gte(creneauxExternes.endsAt, new Date())))
+      .orderBy(creneauxExternes.startsAt),
   ]);
 
   const now = Date.now();
   return tables.map((table) => {
+    const siens = blocs.filter((b) => b.tableId === table.id);
+    const externe = {
+      maintenant: siens.some((b) => b.startsAt.getTime() <= now && b.endsAt.getTime() > now),
+      prochain: siens.find((b) => b.startsAt.getTime() > now)?.startsAt ?? null,
+    };
     const mine = bookings.filter((b) => b.reservation.tableId === table.id);
     const ends = (r: Reservation) => r.startsAt.getTime() + r.minutes * 60_000;
     return {
       table,
       now: mine.find((b) => b.reservation.startsAt.getTime() <= now && ends(b.reservation) > now) ?? null,
       next: mine.find((b) => b.reservation.startsAt.getTime() > now) ?? null,
+      externe,
     };
   });
 }
