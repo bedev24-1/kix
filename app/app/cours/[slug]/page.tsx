@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { db, enrollments } from "@/db";
 import { CoursButton } from "@/components/mb/CoursButton";
+import { PartagerBouton } from "@/components/mb/PartagerBouton";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ChevronLeftIcon, PinIcon, TargetIcon } from "@/components/icons";
@@ -51,6 +52,14 @@ export default async function CoursFiche({ params }: { params: Promise<{ slug: s
         >
           <ChevronLeftIcon size={18} />
         </Link>
+
+        {/* Le lien partagé mène à la page publique du cours, qui s'ouvre sans
+            compte et conduit à l'inscription. */}
+        <PartagerBouton
+          chemin={`/c/${course.slug}`}
+          titre={course.title}
+          className="press absolute top-4 right-5 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur lg:right-7"
+        />
 
         <div className="absolute inset-x-5 bottom-4 flex flex-col gap-2 text-white lg:inset-x-7">
           <div className="flex flex-wrap gap-1.5">

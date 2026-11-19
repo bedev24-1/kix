@@ -7,6 +7,7 @@ import { DemandeRetrait } from "@/components/caisse/Retrait";
 import { Card } from "@/components/ui/Card";
 import { CoinIcon, UserIcon } from "@/components/icons";
 import { deleteCourse, saveCourse } from "@/lib/actions";
+import { LienCours } from "@/components/mb/LienCours";
 import { FORMATS, NIVEAUX, getCoursDuProf, getElevesDuProf, getSoldeProf } from "@/lib/courses";
 import { getVenues } from "@/lib/queries";
 import { RETRAIT_MINIMUM, getSoldeRetirableVendeur } from "@/lib/caisse";
@@ -135,6 +136,8 @@ export default async function EspaceProf() {
                 </span>
               </span>
             </div>
+
+            <LienCours slug={course.slug} titre={course.title} />
 
             <Drawer summary="Modifier">
               <form action={saveCourse} className="grid gap-3 pt-3 sm:grid-cols-2">

@@ -1,6 +1,7 @@
 import { Drawer, Field, PageHead, Pill, Select, SubmitButton, Switch, Table, Td, TextArea } from "@/components/admin/AdminUI";
 import { ImageField } from "@/components/admin/ImageField";
 import { AnnonceCours } from "@/components/joueur/AnnonceCours";
+import { LienCours } from "@/components/mb/LienCours";
 import { saveCourse } from "@/lib/actions";
 import { getAllCourses, FORMATS, NIVEAUX, prixParSeance } from "@/lib/courses";
 import { getAllVenues } from "@/lib/queries";
@@ -70,6 +71,7 @@ export default async function AdminCours() {
               <div className="flex items-center gap-2">
                 <AnnonceCours coursId={course.id} titre={course.title} />
               </div>
+              <LienCours slug={course.slug} titre={course.title} className="mt-2 min-w-64" />
             </Td>
             <Td>
               <Drawer summary="▸ Éditer">

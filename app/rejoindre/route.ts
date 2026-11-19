@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SUITE_COOKIE, suiteValide } from "@/lib/suite";
 import { urlPublique } from "@/lib/url-publique";
+import { getCurrentUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   const vers = suiteValide(request.nextUrl.searchParams.get("vers"));
+  // `entree=inscription` : le visiteur vient d'une page publique et n'a pas
+  // de compte. On l'envoie créer le sien plutôt que sur la connexion ;
+  // l'inscription le ramènera à sa destination. Déjà connecté : tout droit.
+  const nouveau = request.nextUrl.searchParams.get("entree") === "inscription" && !(await getCurrentUser());
   // L'adresse publique, pas `request.url` : derrière le proxy, celle-ci est
   // « localhost:3000 », et la redirection y envoyait le joueur.
-  const reponse = NextResponse.redirect(new URL(vers ?? "/app", await urlPublique()));
+  const reponse = NextResponse.redirect(new URL(nouveau ? "/inscription" : (vers ?? "/app"), await urlPublique()));
   if (vers) {
     reponse.cookies.set(SUITE_COOKIE, vers, {
       httpOnly: true,
