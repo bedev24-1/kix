@@ -816,3 +816,28 @@
   from { transform: scaleX(0.08); }
   to { transform: scaleX(1); }
 }
+
+/* ------------------------------------------------------------ lecteur vidéo */
+
+/* Plein écran maison (iPhone) : la page ne défile plus sous le lecteur. */
+html.mb-plein-ecran,
+html.mb-plein-ecran body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Téléphone couché : le lecteur tient dans la hauteur de l'écran, et la barre
+   de navigation du bas se range pour ne pas couvrir la vidéo. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .lecteur-paysage {
+    width: auto;
+    height: calc(100dvh - 1.5rem);
+  }
+  html.mb-lecteur [data-nav-bas],
+  html.mb-plein-ecran [data-nav-bas] {
+    display: none;
+  }
+}
+html.mb-plein-ecran [data-nav-bas] {
+  display: none;
+}

@@ -64,6 +64,7 @@ export function BottomNav() {
 
   return (
     <nav
+      data-nav-bas
       aria-hidden={repliee || undefined}
       inert={repliee}
       className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-[430px] justify-center px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:max-w-[34rem] lg:hidden"

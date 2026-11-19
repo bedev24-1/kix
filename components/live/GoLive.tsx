@@ -81,6 +81,32 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
 
   useEffect(() => stop, [stop]);
 
+  // Le sens du téléphone. L'application tourne avec lui (manifeste en
+  // orientation libre) et la caméra suit : tenu à l'horizontale, le direct
+  // part en paysage. Tenu droit, on le rappelle.
+  const [debout, setDebout] = useState(false);
+  // Téléphone couché : l'écran devient celui d'un appareil photo, l'image
+  // en entier et les commandes sur le côté, à portée de pouce.
+  const [couche, setCouche] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: portrait)");
+    const bas = window.matchMedia("(orientation: landscape) and (max-height: 540px)");
+    const lire = () => {
+      setDebout(mq.matches && window.matchMedia("(pointer: coarse)").matches);
+      setCouche(bas.matches);
+    };
+    lire();
+    mq.addEventListener("change", lire);
+    bas.addEventListener("change", lire);
+    // Sur un téléphone couché, la barre du bas se range (voir globals.css).
+    document.documentElement.classList.add("mb-lecteur");
+    return () => {
+      mq.removeEventListener("change", lire);
+      bas.removeEventListener("change", lire);
+      document.documentElement.classList.remove("mb-lecteur");
+    };
+  }, []);
+
   async function openCamera(mode: "environment" | "user" = facing) {
     setPhase("asking");
     setError(undefined);
@@ -192,9 +218,21 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
   }
 
   return (
-    <Card shape="panel" className="flex flex-col gap-4 p-4">
-      <div className="relative aspect-video overflow-hidden rounded-card bg-black">
-        <video ref={preview} autoPlay muted playsInline className="h-full w-full object-cover" />
+    <Card
+      shape="panel"
+      className={cn(
+        "flex flex-col gap-4 p-4",
+        couche && "fixed inset-0 z-[100] flex-row gap-0 rounded-none border-0 bg-black p-0",
+      )}
+    >
+      <div
+        className={cn(
+          "relative overflow-hidden bg-black",
+          couche ? "h-full grow" : "mx-auto aspect-video w-full rounded-card",
+        )}
+      >
+        {/* L'aperçu montre l'image entière, telle que les spectateurs la recevront. */}
+        <video ref={preview} autoPlay muted playsInline className="h-full w-full object-contain" />
 
         {phase === "idle" || phase === "asking" ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg/80 px-6 text-center">
@@ -206,15 +244,25 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
         ) : null}
 
         {phase === "live" ? <LiveDot className="absolute top-3 left-3 bg-black/65 backdrop-blur-md" /> : null}
+
+        {debout && (phase === "ready" || phase === "live" || phase === "connecting") ? (
+          <span className="absolute inset-x-3 bottom-3 flex items-center justify-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-center text-[11.5px] text-white/90 backdrop-blur-md">
+            <TourneIcon /> Tourne le téléphone à l&apos;horizontale : le direct passera en paysage.
+          </span>
+        ) : null}
       </div>
 
+      <div
+        className={cn("flex flex-col gap-4", couche && "w-[min(40vw,15rem)] shrink-0 justify-center gap-3 overflow-y-auto p-3")}
+        style={couche ? { paddingRight: "max(0.75rem, env(safe-area-inset-right))" } : undefined}
+      >
       {error ? (
         <p role="alert" className="shake rounded-none border border-warn/45 bg-warn/10 px-3.5 py-2.5 text-[12.5px] text-warn">
           {error}
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-2.5">
+      <div className={cn("flex flex-wrap gap-2.5", couche && "flex-col [&>*]:grow-0")}>
         {phase === "idle" || phase === "error" ? (
           <button
             onClick={() => openCamera()}
@@ -263,13 +311,21 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
         ) : null}
       </div>
 
-      <p className="text-[11.5px] leading-5 text-muted">
+      <p className={cn("text-[11.5px] leading-5 text-muted", couche && "hidden")}>
         Reste sur cette page pendant la diffusion : le flux s&apos;arrête si tu la fermes. Branche le téléphone,
         l&apos;encodage vide une batterie en une heure.
       </p>
+      </div>
     </Card>
   );
 }
+
+const TourneIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+    <rect x="7" y="3" width="10" height="18" rx="2" />
+    <path d="M20 14a8 8 0 0 1-6 6M17.5 20.5 14 20l.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const CameraIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9">

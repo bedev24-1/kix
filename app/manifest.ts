@@ -25,7 +25,9 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/app",
     scope: "/",
     display: "standalone",
-    orientation: "portrait",
+    // Libre : un téléphone tourné en paysage pour filmer ou regarder un direct
+    // doit faire tourner l'application avec lui.
+    orientation: "any",
     background_color: "#071a13",
     theme_color: "#071a13",
     lang: "fr",

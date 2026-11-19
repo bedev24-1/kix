@@ -59,7 +59,6 @@ export function StreamPlayer({
   }, []);
   const [phase, setPhase] = useState<Phase>("loading");
   const [message, setMessage] = useState<string>();
-  const [tv, setTv] = useState(false);
   const [muted, setMuted] = useState(true);
 
   const attach = useCallback(async () => {
@@ -175,30 +174,131 @@ export function StreamPlayer({
     };
   }, [attach]);
 
+  // Plein écran. Safari sur iPhone refuse le plein écran d'un bloc (il ne
+  // l'accorde qu'à la vidéo seule, ce qui ferait perdre la barre de score) :
+  // on y passe alors en « plein écran maison », un calque fixe par-dessus
+  // toute l'application. Ailleurs, on prend le vrai, et on tourne l'écran
+  // dans le sens de l'image quand le système le permet (Android).
+  const [pseudo, setPseudo] = useState(false);
+  const [vrai, setVrai] = useState(false);
+  const tv = pseudo || vrai;
+
   const toggleTv = useCallback(async () => {
-    const node = shell.current;
+    const node = shell.current as (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> | void }) | null;
     if (!node) return;
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await node.requestFullscreen();
-    } catch {
-      setTv((v) => !v);
+    const doc = document as Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
+    if (document.fullscreenElement || doc.webkitFullscreenElement) {
+      try {
+        screen.orientation?.unlock?.();
+      } catch {}
+      await (document.exitFullscreen?.() ?? doc.webkitExitFullscreen?.());
+      return;
     }
-  }, []);
+    if (pseudo) {
+      setPseudo(false);
+      return;
+    }
+    const demander = node.requestFullscreen?.bind(node) ?? node.webkitRequestFullscreen?.bind(node);
+    if (demander) {
+      try {
+        await demander();
+        const v = video.current;
+        const paysage = !v || !v.videoWidth || v.videoWidth >= v.videoHeight;
+        try {
+          await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.(
+            paysage ? "landscape" : "portrait",
+          );
+        } catch {}
+        return;
+      } catch {
+        /* refusé : plein écran maison */
+      }
+    }
+    setPseudo(true);
+  }, [pseudo]);
 
   useEffect(() => {
-    const sync = () => setTv(Boolean(document.fullscreenElement));
+    const doc = document as Document & { webkitFullscreenElement?: Element | null };
+    const sync = () => setVrai(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
     document.addEventListener("fullscreenchange", sync);
-    return () => document.removeEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
   }, []);
+
+  // Le sens de l'écran et celui de l'image : en plein écran maison, téléphone
+  // tenu droit devant une image en paysage, on couche l'image pour qu'elle
+  // occupe tout l'écran — comme le font les applications vidéo. Dès que le
+  // téléphone est tourné, l'image se redresse d'elle-même.
+  const [sens, setSens] = useState({ ecranPortrait: false, imagePaysage: true });
+  useEffect(() => {
+    const v = video.current;
+    const lire = () =>
+      setSens({
+        ecranPortrait: window.innerHeight > window.innerWidth,
+        imagePaysage: !v || !v.videoWidth || v.videoWidth >= v.videoHeight,
+      });
+    lire();
+    window.addEventListener("resize", lire);
+    window.addEventListener("orientationchange", lire);
+    v?.addEventListener("loadedmetadata", lire);
+    v?.addEventListener("resize", lire);
+    return () => {
+      window.removeEventListener("resize", lire);
+      window.removeEventListener("orientationchange", lire);
+      v?.removeEventListener("loadedmetadata", lire);
+      v?.removeEventListener("resize", lire);
+    };
+  }, []);
+  const couche = pseudo && sens.ecranPortrait && sens.imagePaysage;
+
+  // Plein écran maison : la page ne défile plus dessous, Échap en sort.
+  useEffect(() => {
+    if (!pseudo) return;
+    const html = document.documentElement;
+    html.classList.add("mb-plein-ecran");
+    const echap = (e: KeyboardEvent) => e.key === "Escape" && setPseudo(false);
+    window.addEventListener("keydown", echap);
+    return () => {
+      html.classList.remove("mb-plein-ecran");
+      window.removeEventListener("keydown", echap);
+    };
+  }, [pseudo]);
+
+  // Sur un téléphone en paysage, la barre de navigation du bas cache la vidéo :
+  // on la range tant qu'un lecteur est à l'écran (voir globals.css).
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.add("mb-lecteur");
+    return () => html.classList.remove("mb-lecteur");
+  }, []);
+
+  // Les marges de l'encoche et de la barre d'accueil, en plein écran.
+  const marges = tv
+    ? {
+        paddingTop: "max(0.875rem, env(safe-area-inset-top))",
+        paddingRight: "max(0.875rem, env(safe-area-inset-right))",
+        paddingLeft: "max(0.875rem, env(safe-area-inset-left))",
+      }
+    : undefined;
 
   return (
     <div
       ref={shell}
       className={cn(
-        "relative overflow-hidden rounded-panel bg-black",
-        tv ? "h-dvh w-dvw rounded-none" : "aspect-video w-full",
+        "overflow-hidden bg-black",
+        couche
+          ? "fixed top-1/2 left-1/2 z-[100] h-[100dvw] w-[100dvh] rounded-none"
+          : pseudo
+            ? "fixed inset-0 z-[100] h-dvh w-dvw rounded-none"
+            : vrai
+              ? "relative h-dvh w-dvw rounded-none"
+              : // Téléphone en paysage : le lecteur tient dans la hauteur de l'écran.
+                "lecteur-paysage relative mx-auto aspect-video w-full max-w-full rounded-panel",
       )}
+      style={couche ? { transform: "translate(-50%, -50%) rotate(90deg)" } : undefined}
     >
       <video
         ref={video}
@@ -243,6 +343,7 @@ export function StreamPlayer({
       {/* Habillage simple : le score vient de la feuille de match, en direct. */}
       {overlay && !barre ? (
         <div
+          style={marges}
           className={cn(
             "pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3",
             tv ? "p-[2.5vw]" : "p-3.5",
@@ -278,6 +379,7 @@ export function StreamPlayer({
       ) : null}
 
       <div
+        style={marges}
         className={cn(
           "absolute inset-x-0 flex items-center justify-between gap-3 p-3.5",
           // La barre occupe le bas : les commandes montent en haut à droite.
