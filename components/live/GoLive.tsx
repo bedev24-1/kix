@@ -113,7 +113,11 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
     try {
       const media = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: { echoCancellation: true, noiseSuppression: true },
+        // Le son d'une salle, pas celui d'un appel : la suppression de bruit
+        // et l'annulation d'écho prenaient les chocs des billes et la salle
+        // pour du bruit, et rendaient un direct presque muet. Le téléphone ne
+        // joue rien pendant qu'il filme : aucun écho à annuler.
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } },
       });
       stream.current?.getTracks().forEach((t) => t.stop());
       stream.current = media;
@@ -136,6 +140,19 @@ export function GoLive({ whip, streamKey, title }: { whip: string; streamKey: st
       peer.current = pc;
       stream.current.getTracks().forEach((track) => pc.addTrack(track, stream.current!));
       prefererCodecHls(pc);
+      // Un débit audio de musique plutôt que de voix (32 kb/s par défaut).
+      for (const sender of pc.getSenders()) {
+        if (sender.track?.kind !== "audio") continue;
+        try {
+          const p = sender.getParameters();
+          if (p.encodings?.length) {
+            p.encodings[0].maxBitrate = 96000;
+            void sender.setParameters(p).catch(() => {});
+          }
+        } catch {
+          /* navigateur qui ne le permet pas : débit par défaut */
+        }
+      }
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);

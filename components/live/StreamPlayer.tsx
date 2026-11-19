@@ -59,7 +59,39 @@ export function StreamPlayer({
   }, []);
   const [phase, setPhase] = useState<Phase>("loading");
   const [message, setMessage] = useState<string>();
+  // Le son. Les navigateurs n'autorisent la lecture automatique que muette :
+  // on part muet, on tente le son si le spectateur l'avait déjà activé, et
+  // sinon une pastille bien visible invite à toucher pour l'entendre.
   const [muted, setMuted] = useState(true);
+  const [sansSon, setSansSon] = useState(false);
+
+  const lancer = useCallback(async (node: HTMLVideoElement) => {
+    let voulu = false;
+    try {
+      voulu = localStorage.getItem("mb.son") === "1";
+    } catch {}
+    node.muted = !voulu;
+    try {
+      await node.play();
+    } catch {
+      // Son refusé sans geste : on repart muet, l'image d'abord.
+      node.muted = true;
+      await node.play().catch(() => {});
+    }
+    setMuted(node.muted);
+  }, []);
+
+  const basculerSon = useCallback(() => {
+    const node = video.current;
+    if (!node) return;
+    // Dans le geste lui-même : iPhone n'accorde le son qu'à ce moment-là.
+    node.muted = !node.muted;
+    if (!node.muted) void node.play().catch(() => {});
+    setMuted(node.muted);
+    try {
+      localStorage.setItem("mb.son", node.muted ? "0" : "1");
+    } catch {}
+  }, []);
 
   const attach = useCallback(async () => {
     const node = video.current;
@@ -81,16 +113,27 @@ export function StreamPlayer({
     // D'abord WebRTC (WHEP) : moins d'une seconde de retard, et il lit tous
     // les codecs qu'un téléphone envoie — VP8 compris, que le HLS ne sait pas
     // porter (playlist sans image : la vignette restait affichée).
-    const fermerWhep = await lireEnWhep(node, ticket.whep);
-    if (fermerWhep) {
-      setPhase("playing");
-      return fermerWhep;
+    const whep = await lireEnWhep(node, ticket.whep);
+    if (whep) {
+      // Le WebRTC ne porte que l'Opus. Une source en AAC — OBS, une caméra
+      // RTMP — arrive donc sans son par ce chemin, alors que le HLS, lui, le
+      // porte. Image sans son en WebRTC et son annoncé en HLS : on prend le
+      // HLS, quelques secondes de retard valent mieux qu'un direct muet.
+      if (whep.son || !(await hlsPorteLeSon(ticket.hls))) {
+        setSansSon(!whep.son);
+        setPhase("playing");
+        void lancer(node);
+        return whep.fermer;
+      }
+      whep.fermer();
     }
+    setSansSon(false);
 
     // Secours : le HLS. Safari le lit nativement ; ailleurs, hls.js fait le travail.
     if (node.canPlayType("application/vnd.apple.mpegurl")) {
       node.src = ticket.hls;
       setPhase("playing");
+      void lancer(node);
       return;
     }
 
@@ -104,7 +147,10 @@ export function StreamPlayer({
     const hls = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
     hls.loadSource(ticket.hls);
     hls.attachMedia(node);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => setPhase("playing"));
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      setPhase("playing");
+      void lancer(node);
+    });
     // Une playlist sans piste vidéo (codec que le HLS ne porte pas) : on le dit
     // au lieu de laisser la vignette immobile.
     const sansImage = window.setTimeout(() => {
@@ -144,7 +190,7 @@ export function StreamPlayer({
       window.clearTimeout(sansImage);
       hls.destroy();
     };
-  }, [streamId]);
+  }, [streamId, lancer]);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -303,7 +349,7 @@ export function StreamPlayer({
       <video
         ref={video}
         poster={poster}
-        muted={muted}
+        muted
         autoPlay
         playsInline
         controls={false}
@@ -378,6 +424,17 @@ export function StreamPlayer({
         </div>
       ) : null}
 
+      {/* Pastille du son : le petit bouton seul passait inaperçu, et on
+          croyait le direct sans son. */}
+      {phase === "playing" && muted && !sansSon ? (
+        <button
+          onClick={basculerSon}
+          className="press absolute top-1/2 left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full bg-black/70 px-4 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md transition hover:bg-black/80"
+        >
+          <MutedIcon /> Toucher pour le son
+        </button>
+      ) : null}
+
       <div
         style={marges}
         className={cn(
@@ -392,7 +449,7 @@ export function StreamPlayer({
           </span>
         )}
         <div className="flex gap-2">
-          <Control onClick={() => setMuted((m) => !m)} label={muted ? "Activer le son" : "Couper le son"}>
+          <Control onClick={basculerSon} label={muted ? "Activer le son" : "Couper le son"}>
             {muted ? <MutedIcon /> : <SoundIcon />}
           </Control>
           <Control onClick={toggleTv} label={tv ? "Quitter le plein écran" : "Plein écran"}>
@@ -457,7 +514,11 @@ const MutedIcon = () => (
  * venue à temps (réseau qui bloque l'UDP, direct pas encore lancé) : le HLS
  * prend alors le relais.
  */
-async function lireEnWhep(node: HTMLVideoElement, url: string, delai = 7000): Promise<(() => void) | null> {
+async function lireEnWhep(
+  node: HTMLVideoElement,
+  url: string,
+  delai = 7000,
+): Promise<{ fermer: () => void; son: boolean } | null> {
   if (typeof RTCPeerConnection === "undefined") return null;
   const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
   pc.addTransceiver("video", { direction: "recvonly" });
@@ -498,14 +559,33 @@ async function lireEnWhep(node: HTMLVideoElement, url: string, delai = 7000): Pr
       );
     });
     if (!image) throw new Error("pas d'image");
-    void node.play().catch(() => {});
-    return () => {
-      pc.close();
-      node.srcObject = null;
+    // Le serveur refuse la piste audio quand la source n'a pas de son qu'il
+    // sache passer en WebRTC : aucune piste n'arrive alors.
+    const son = ((node.srcObject as MediaStream | null)?.getAudioTracks().length ?? 0) > 0;
+    return {
+      son,
+      fermer: () => {
+        pc.close();
+        node.srcObject = null;
+      },
     };
   } catch {
     pc.close();
     node.srcObject = null;
     return null;
+  }
+}
+
+/**
+ * La playlist HLS annonce-t-elle du son ? Les codecs du flux y sont écrits
+ * (mp4a pour l'AAC, opus), ou une piste audio à part (EXT-X-MEDIA).
+ */
+async function hlsPorteLeSon(url: string): Promise<boolean> {
+  try {
+    const reponse = await fetch(url, { cache: "no-store" });
+    if (!reponse.ok) return false;
+    return /mp4a|opus|ac-3|ec-3|TYPE=AUDIO/i.test(await reponse.text());
+  } catch {
+    return false;
   }
 }
