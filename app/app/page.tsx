@@ -69,7 +69,7 @@ export default async function AccueilPage() {
     ? {
         href: `/app/events/${tete.slug}`,
         titre: tete.title,
-        sousTitre: tournois.has(tete.id) ? "" : tete.subtitle,
+        sousTitre: tournois.has(tete.id) ? tete.subtitle.replace(" · rayés ou pleins", "") : tete.subtitle,
         image: tete.image || "/img/hero-player.jpg",
         genre: tournois.has(tete.id) ? "Tournoi" : "Soirée",
         quand: tete.day,

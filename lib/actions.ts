@@ -2670,7 +2670,7 @@ async function syncTwinEvent(tournamentId: string, formData: FormData) {
 
   const commun = {
     title: t.title,
-    subtitle: `Tournoi ${DISCIPLINES_LABELS[t.discipline] ?? t.discipline} · ${t.size} joueurs`,
+    subtitle: `Tournoi ${(DISCIPLINES_LABELS[t.discipline] ?? t.discipline).replace(" · rayés ou pleins", "")} · ${t.size} joueurs`,
     day: jour,
     hours: heures,
     venueId: t.venueId,
@@ -2709,7 +2709,7 @@ async function resumerTableaux(principalId: string) {
   if (!principal?.eventId) return;
   const ajoutes = await db.select().from(tournaments).where(eq(tournaments.parentId, principalId));
   const tous = [principal, ...ajoutes.filter((x) => x.status !== "annule")];
-  const discipline = DISCIPLINES_LABELS[principal.discipline] ?? principal.discipline;
+  const discipline = (DISCIPLINES_LABELS[principal.discipline] ?? principal.discipline).replace(" · rayés ou pleins", "");
   const subtitle =
     tous.length > 1
       ? `Tournoi ${discipline} · ${tous.map((x) => `${CATEGORIES[x.category] ?? x.category} ${x.size}`).join(" · ")}`
