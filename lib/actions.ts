@@ -2554,6 +2554,100 @@ export async function saveTournament(formData: FormData) {
   revalidatePath("/app/events");
 }
 
+/**
+ * Convertit un tableau mixte non commencé en deux tableaux frères.
+ * Les lignes de candidature sont déplacées telles quelles : paiements,
+ * décisions et coordonnées restent donc intacts.
+ */
+export async function convertirTournoiMixte(tournamentId: string) {
+  await requireRole("admin");
+
+  const resultat = await db.transaction(async (tx) => {
+    const tournoi = (
+      await tx.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1).for("update")
+    )[0];
+    if (!tournoi) return { ok: false as const, error: "Tournoi introuvable." };
+    if (tournoi.category !== "mixte" || tournoi.parentId) {
+      return { ok: false as const, error: "Seul un tableau mixte principal peut être converti." };
+    }
+    if (!["brouillon", "inscriptions", "complet"].includes(tournoi.status)) {
+      return { ok: false as const, error: "La conversion est impossible après le lancement ou l’annulation du tournoi." };
+    }
+
+    const dejaDesMatches = (
+      await tx.select({ id: tournamentMatches.id }).from(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournoi.id)).limit(1)
+    )[0];
+    if (dejaDesMatches) return { ok: false as const, error: "Un tirage a déjà été préparé : efface-le avant de convertir le tournoi." };
+
+    const lignes = await tx
+      .select({ id: tournamentPlayers.id, sexe: users.sexe, status: tournamentPlayers.status, seed: tournamentPlayers.seed, groupe: tournamentPlayers.groupe })
+      .from(tournamentPlayers)
+      .innerJoin(users, eq(users.id, tournamentPlayers.userId))
+      .where(eq(tournamentPlayers.tournamentId, tournoi.id));
+    if (lignes.some((ligne) => ligne.seed !== null || ligne.groupe !== null)) {
+      return { ok: false as const, error: "Des places sont déjà affectées : la conversion n’a pas été effectuée." };
+    }
+    if (lignes.some((ligne) => ligne.sexe !== "homme" && ligne.sexe !== "femme")) {
+      return { ok: false as const, error: "Chaque candidature doit avoir un sexe renseigné avant la conversion." };
+    }
+
+    const freres = await tx.select({ id: tournaments.id }).from(tournaments).where(eq(tournaments.parentId, tournoi.id)).limit(1);
+    if (freres.length) return { ok: false as const, error: "Ce tournoi possède déjà des tableaux frères." };
+
+    const slugHommes = `${tournoi.slug}-hommes`;
+    const slugDames = `${tournoi.slug}-dames`;
+    const slugsPris = await tx
+      .select({ slug: tournaments.slug })
+      .from(tournaments)
+      .where(inArray(tournaments.slug, [slugHommes, slugDames]));
+    if (slugsPris.length) return { ok: false as const, error: "Un tournoi utilise déjà l’un des liens nécessaires à la conversion." };
+
+    const hommes = lignes.filter((ligne) => ligne.sexe === "homme");
+    const dames = lignes.filter((ligne) => ligne.sexe === "femme");
+    const actifs = (sexe: "homme" | "femme") => lignes.filter((ligne) => ligne.sexe === sexe && ["candidat", "accepte"].includes(ligne.status)).length;
+    const tailleHommes = Math.min(TAILLE_MAX, Math.max(2, tournoi.placesHommes || actifs("homme")));
+    const tailleDames = Math.min(TAILLE_MAX, Math.max(2, tournoi.placesDames || actifs("femme")));
+
+    await tx.update(tournaments).set({ category: "hommes", size: tailleHommes, placesHommes: 0, placesDames: 0 }).where(eq(tournaments.id, tournoi.id));
+    const idDames = uid();
+    await tx.insert(tournaments).values({
+      ...tournoi,
+      id: idDames,
+      slug: slugDames,
+      category: "dames",
+      size: tailleDames,
+      placesHommes: 0,
+      placesDames: 0,
+      parentId: tournoi.id,
+      createdAt: new Date(),
+    });
+    if (dames.length) {
+      await tx
+        .update(tournamentPlayers)
+        .set({ tournamentId: idDames })
+        .where(inArray(tournamentPlayers.id, dames.map((ligne) => ligne.id)));
+    }
+
+    return { ok: true as const, slugHommes: tournoi.slug, slugDames, effectifsHommes: hommes.length, effectifsDames: dames.length };
+  });
+
+  if (!resultat.ok) return resultat;
+
+  await resumerTableaux(tournamentId);
+  for (const slug of [resultat.slugHommes, resultat.slugDames]) {
+    revalidatePath(`/admin/tournois/${tournamentId}`);
+    revalidatePath(`/app/tournois/${slug}`);
+    revalidatePath(`/t/${slug}`);
+  }
+  revalidatePath("/admin/tournois");
+  revalidatePath("/app/tournois");
+  revalidatePath("/app/events");
+  return {
+    ok: true as const,
+    detail: `${resultat.effectifsHommes} candidature${resultat.effectifsHommes === 1 ? "" : "s"} homme${resultat.effectifsHommes === 1 ? "" : "s"} et ${resultat.effectifsDames} candidature${resultat.effectifsDames === 1 ? "" : "s"} femme${resultat.effectifsDames === 1 ? "" : "s"} réparties.`,
+  };
+}
+
 /** Le jumeau côté public : c'est par lui que les spectateurs entrent. */
 async function syncTwinEvent(tournamentId: string, formData: FormData) {
   const t = (await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1))[0];
@@ -2576,7 +2670,7 @@ async function syncTwinEvent(tournamentId: string, formData: FormData) {
 
   const commun = {
     title: t.title,
-    subtitle: `Tournoi ${DISCIPLINES_LABELS[t.discipline] ?? t.discipline} · ${t.size} joueurs`,
+    subtitle: `Tournoi ${(DISCIPLINES_LABELS[t.discipline] ?? t.discipline).replace(" · rayés ou pleins", "")} · ${t.size} joueurs`,
     day: jour,
     hours: heures,
     venueId: t.venueId,
@@ -2615,7 +2709,7 @@ async function resumerTableaux(principalId: string) {
   if (!principal?.eventId) return;
   const ajoutes = await db.select().from(tournaments).where(eq(tournaments.parentId, principalId));
   const tous = [principal, ...ajoutes.filter((x) => x.status !== "annule")];
-  const discipline = DISCIPLINES_LABELS[principal.discipline] ?? principal.discipline;
+  const discipline = (DISCIPLINES_LABELS[principal.discipline] ?? principal.discipline).replace(" · rayés ou pleins", "");
   const subtitle =
     tous.length > 1
       ? `Tournoi ${discipline} · ${tous.map((x) => `${CATEGORIES[x.category] ?? x.category} ${x.size}`).join(" · ")}`

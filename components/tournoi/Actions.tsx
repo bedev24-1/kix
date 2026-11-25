@@ -8,6 +8,7 @@ import { CheckIcon, TrophyIcon } from "@/components/icons";
 import {
   ajouterArbitreTournoi,
   deciderCandidat,
+  convertirTournoiMixte,
   demarrerTournoi,
   designerDuel,
   echangerPlaces,
@@ -174,6 +175,27 @@ export function EtatTournoi({
         </Bouton>
       ) : null}
     </div>
+  );
+}
+
+/** Convertir un tableau mixte avant tout tirage. */
+export function ConvertirTournoiMixte({ tournamentId }: { tournamentId: string }) {
+  const { faire, pending } = useGeste();
+
+  return (
+    <Bouton
+      pending={pending}
+      onClick={() => {
+        if (!window.confirm("Convertir ce tournoi mixte en deux tableaux séparés, hommes et dames ? Les candidatures, décisions et paiements seront conservés et répartis selon le sexe des profils.")) return;
+        faire(
+          () => convertirTournoiMixte(tournamentId),
+          "Tournoi converti en deux tableaux",
+          "Les candidatures ont été réparties. Les formats et réglages de tirage sont conservés.",
+        );
+      }}
+    >
+      Convertir ce tableau mixte en deux tableaux
+    </Bouton>
   );
 }
 

@@ -5,6 +5,7 @@ import {
   BoutonFeuille,
   DesignationDuel,
   EncaisserGuichet,
+  ConvertirTournoiMixte,
   EtatTournoi,
   GestionArbitres,
   Placement,
@@ -33,7 +34,7 @@ import { arbitresActifs } from "@/lib/profils-db";
 import { CANDIDATURES, DISCIPLINES, ETATS, NIVEAUX, formule } from "@/lib/tournois";
 import { displayPhone } from "@/lib/phone";
 import { f } from "@/lib/format";
-import { db, events, matchOfficials, users } from "@/db";
+import { db, events, matchOfficials, tournaments, users } from "@/db";
 import { eq } from "drizzle-orm";
 import type { Tournament, Venue } from "@/db";
 
@@ -58,7 +59,7 @@ export async function ConsoleTournoi({
   salles?: { value: string; label: string }[];
 }) {
   const enPoules = tournoi.format === "poules";
-  const [joueurs, duels, poules, finies, noms, jumeau, arbitres] = await Promise.all([
+  const [joueurs, duels, poules, finies, noms, jumeau, arbitres, tableauxEnfants] = await Promise.all([
     getPlayers(tournoi.id),
     getBracket(tournoi.id),
     enPoules ? getDuelsDePoule(tournoi.id) : Promise.resolve([]),
@@ -74,6 +75,7 @@ export async function ConsoleTournoi({
           .innerJoin(users, eq(users.id, matchOfficials.userId))
           .where(eq(matchOfficials.eventId, tournoi.eventId))
       : Promise.resolve([] as { id: string; nom: string }[]),
+    db.select({ id: tournaments.id }).from(tournaments).where(eq(tournaments.parentId, tournoi.id)).limit(1),
   ]);
 
   const candidats = joueurs.filter((j) => j.player.status === "candidat");
@@ -179,6 +181,14 @@ export async function ConsoleTournoi({
             tableauOuvert={lance && duels.length > 0}
             prepare={prepare}
           />
+          {retour.startsWith("/admin/") &&
+          tournoi.category === "mixte" &&
+          !tournoi.parentId &&
+          tableauxEnfants.length === 0 &&
+          !prepare &&
+          ["brouillon", "inscriptions", "complet"].includes(tournoi.status) ? (
+            <ConvertirTournoiMixte tournamentId={tournoi.id} />
+          ) : null}
         </div>
 
         <FormulaireTournoi
