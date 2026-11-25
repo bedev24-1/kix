@@ -100,6 +100,7 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
         userId: tournamentPlayers.userId,
         nickname: tournamentPlayers.nickname,
         seed: tournamentPlayers.seed,
+        groupe: tournamentPlayers.groupe,
         nom: users.name,
         avatar: users.avatar,
         certifie: users.certifie,
@@ -196,7 +197,7 @@ export async function tableauEnDirect(tournamentId: string): Promise<TableauDire
 
   // Les poules, classées comme le moteur les classe — c'est lui qui décide
   // qui sort, l'écran ne fait que le montrer.
-  const classements = duelsPoule.length ? await classementDesPoules(tournamentId) : [];
+  const classements = duelsPoule.length || joueurs.some((j) => j.groupe !== null) ? await classementDesPoules(tournamentId) : [];
   const poules: GroupeVue[] = classements.map((lignes, i) => {
     const numero = i + 1;
     const siens = duelsPoule.filter((d) => d.groupe === numero);

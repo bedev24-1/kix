@@ -2574,19 +2574,19 @@ export async function convertirTournoiMixte(tournamentId: string) {
       return { ok: false as const, error: "La conversion est impossible après le lancement ou l’annulation du tournoi." };
     }
 
-    const dejaDesMatches = (
-      await tx.select({ id: tournamentMatches.id }).from(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournoi.id)).limit(1)
-    )[0];
-    if (dejaDesMatches) return { ok: false as const, error: "Un tirage a déjà été préparé : efface-le avant de convertir le tournoi." };
+    const matches = await tx
+      .select({ status: tournamentMatches.status, scoreA: tournamentMatches.scoreA, scoreB: tournamentMatches.scoreB, winnerId: tournamentMatches.winnerId, matchId: tournamentMatches.matchId })
+      .from(tournamentMatches)
+      .where(eq(tournamentMatches.tournamentId, tournoi.id));
+    if (matches.some((match) => match.status !== "attente" || match.scoreA !== 0 || match.scoreB !== 0 || match.winnerId || match.matchId)) {
+      return { ok: false as const, error: "Un duel a déjà commencé : la conversion n’a pas été effectuée." };
+    }
 
     const lignes = await tx
-      .select({ id: tournamentPlayers.id, sexe: users.sexe, status: tournamentPlayers.status, seed: tournamentPlayers.seed, groupe: tournamentPlayers.groupe })
+      .select({ id: tournamentPlayers.id, sexe: users.sexe, status: tournamentPlayers.status })
       .from(tournamentPlayers)
       .innerJoin(users, eq(users.id, tournamentPlayers.userId))
       .where(eq(tournamentPlayers.tournamentId, tournoi.id));
-    if (lignes.some((ligne) => ligne.seed !== null || ligne.groupe !== null)) {
-      return { ok: false as const, error: "Des places sont déjà affectées : la conversion n’a pas été effectuée." };
-    }
     if (lignes.some((ligne) => ligne.sexe !== "homme" && ligne.sexe !== "femme")) {
       return { ok: false as const, error: "Chaque candidature doit avoir un sexe renseigné avant la conversion." };
     }
@@ -2608,6 +2608,8 @@ export async function convertirTournoiMixte(tournamentId: string) {
     const tailleHommes = Math.min(TAILLE_MAX, Math.max(2, tournoi.placesHommes || actifs("homme")));
     const tailleDames = Math.min(TAILLE_MAX, Math.max(2, tournoi.placesDames || actifs("femme")));
 
+    await tx.delete(tournamentMatches).where(eq(tournamentMatches.tournamentId, tournoi.id));
+    await tx.update(tournamentPlayers).set({ seed: null, groupe: null }).where(eq(tournamentPlayers.tournamentId, tournoi.id));
     await tx.update(tournaments).set({ category: "hommes", size: tailleHommes, placesHommes: 0, placesDames: 0 }).where(eq(tournaments.id, tournoi.id));
     const idDames = uid();
     await tx.insert(tournaments).values({

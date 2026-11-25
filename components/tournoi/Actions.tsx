@@ -78,6 +78,7 @@ export function EtatTournoi({
 }) {
   const { faire, pending } = useGeste();
   const fige = status === "encours" || status === "termine";
+  const avantLancement = ["brouillon", "inscriptions", "complet"].includes(status);
   const enPoules = format === "poules";
   const objet = enPoules ? "les poules" : "l'arbre";
 
@@ -106,7 +107,7 @@ export function EtatTournoi({
           que les candidatures continuent : chaque nouveau retenu prend la
           première place libre. Deux façons : par classement (têtes de série,
           favoris éloignés) ou au sort. Le lancement fige tout. */}
-      {(status === "inscriptions" || status === "complet") && acceptes >= 1 ? (
+      {avantLancement && acceptes >= 1 ? (
         <>
           <Bouton
             accent={!prepare}
@@ -152,6 +153,12 @@ export function EtatTournoi({
         </>
       ) : null}
 
+      {avantLancement && acceptes === 0 ? (
+        <span className="text-[12px] text-muted">
+          {status === "brouillon" ? "Ouvre les candidatures puis retiens au moins un joueur pour tirer au sort." : "Retiens au moins un joueur pour tirer au sort."}
+        </span>
+      ) : null}
+
       {/* Les poules jouées, le tableau final s'ouvre entre les qualifiés. */}
       {enPoules && status === "encours" && poulesFinies && !tableauOuvert ? (
         <Bouton
@@ -186,7 +193,7 @@ export function ConvertirTournoiMixte({ tournamentId }: { tournamentId: string }
     <Bouton
       pending={pending}
       onClick={() => {
-        if (!window.confirm("Convertir ce tournoi mixte en deux tableaux séparés, hommes et dames ? Les candidatures, décisions et paiements seront conservés et répartis selon le sexe des profils.")) return;
+        if (!window.confirm("Convertir ce tournoi mixte en deux tableaux séparés, hommes et dames ? Les candidatures, décisions et paiements seront conservés et répartis selon le sexe des profils. Le tirage provisoire sera effacé.")) return;
         faire(
           () => convertirTournoiMixte(tournamentId),
           "Tournoi converti en deux tableaux",

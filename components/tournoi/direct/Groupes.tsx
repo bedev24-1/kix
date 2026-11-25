@@ -41,6 +41,13 @@ export function Groupes({ poules, finies, qualifies }: { poules: GroupeVue[]; fi
                 </tr>
               </thead>
               <tbody>
+                {p.lignes.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-4 text-center text-[11.5px] text-muted">
+                      En attente de joueurs retenus.
+                    </td>
+                  </tr>
+                ) : null}
                 {p.lignes.map((l) => {
                   const sorti = finies && !l.qualifie;
                   return (

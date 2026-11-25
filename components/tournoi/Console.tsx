@@ -185,7 +185,6 @@ export async function ConsoleTournoi({
           tournoi.category === "mixte" &&
           !tournoi.parentId &&
           tableauxEnfants.length === 0 &&
-          !prepare &&
           ["brouillon", "inscriptions", "complet"].includes(tournoi.status) ? (
             <ConvertirTournoiMixte tournamentId={tournoi.id} />
           ) : null}

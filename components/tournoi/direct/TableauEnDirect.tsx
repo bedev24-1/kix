@@ -6,8 +6,10 @@ import { Arbre, type Section } from "@/components/tournoi/direct/Arbre";
 import { Arbitres } from "@/components/tournoi/direct/Arbitres";
 import { Groupes } from "@/components/tournoi/direct/Groupes";
 import { Visage } from "@/components/tournoi/direct/Visage";
-import { tableauEnDirect, type DuelVue } from "@/lib/tournoi-direct";
-import { nomDuTour } from "@/lib/bracket";
+import { tableauEnDirect, type DuelVue, type GroupeVue } from "@/lib/tournoi-direct";
+import { nomDuTour, plateauComplet, taillePlateau } from "@/lib/bracket";
+import { plateauDouble } from "@/lib/double";
+import { nombreDePoules, nomDeLaPoule } from "@/lib/poules";
 import { ImageTableau } from "@/components/tournoi/direct/ImageTableau";
 import { CATEGORIES } from "@/lib/tournois";
 import { cn } from "@/lib/cn";
@@ -55,6 +57,36 @@ export async function TableauEnDirect({
     direct.perdants = [];
     direct.finales = [];
   }
+
+  const aDonneesTirees = direct.poules.length > 0 || direct.arbre.length > 0 || direct.perdants.length > 0 || direct.finales.length > 0;
+  let apercuStructure = false;
+  if (brouillon && t.status !== "annule") {
+    if (t.format === "poules") {
+      const prevues = Math.max(1, nombreDePoules(Math.max(2, t.size), Math.max(2, t.groupSize)), ...direct.poules.map((p) => p.numero));
+      const existantes = new Map(direct.poules.map((p) => [p.numero, p]));
+      direct.poules = Array.from({ length: prevues }, (_, i) => existantes.get(i + 1) ?? groupeVide(i + 1));
+      apercuStructure = direct.poules.some((p) => p.lignes.length === 0 && p.duels.length === 0);
+    }
+
+    if (direct.arbre.length === 0 && direct.perdants.length === 0 && direct.finales.length === 0) {
+      const nbPoules = Math.max(1, nombreDePoules(Math.max(2, t.size), Math.max(2, t.groupSize)));
+      const entrants = t.format === "poules" ? Math.max(2, nbPoules * Math.max(1, t.qualifiers)) : Math.max(2, t.size);
+      const taille = taillePlateau(entrants);
+      const places = Array.from({ length: taille }, () => null);
+
+      if (t.elimination === "double") {
+        const duels = plateauDouble(places, taille).map((d) => duelVide(d.stage, d.round, d.slot, t));
+        direct.arbre = duels.filter((d) => d.stage === "tableau");
+        direct.perdants = duels.filter((d) => d.stage === "perdants");
+        direct.finales = duels.filter((d) => d.stage === "finale");
+      } else {
+        direct.arbre = plateauComplet(places, taille).map((d) => duelVide("tableau", d.round, d.slot, t));
+      }
+      direct.tours = Math.max(0, ...direct.arbre.map((d) => d.round));
+      apercuStructure = true;
+    }
+  }
+
   const rien = direct.poules.length === 0 && direct.arbre.length === 0;
 
   return (
@@ -63,11 +95,16 @@ export async function TableauEnDirect({
         <h2 className="text-[17px] font-semibold">Le tableau</h2>
         {rien ? null : (
           <div className="flex items-center gap-2">
-            {lance || brouillon ? <ImageTableau slug={t.slug} titre={t.title} provisoire={!lance} /> : null}
-            <Actualisation ids={[t.id]} signature={direct.signature} />
+            {!apercuStructure && (lance || brouillon) ? <ImageTableau slug={t.slug} titre={t.title} provisoire={!lance} /> : null}
+            {aDonneesTirees ? <Actualisation ids={[t.id]} signature={direct.signature} /> : null}
           </div>
         )}
       </div>
+      {apercuStructure ? (
+        <p className="rounded-panel border border-dashed border-line px-3.5 py-2.5 text-[12px] text-muted">
+          Aperçu provisoire de la structure. Les duels du tirage apparaîtront ici après qu&apos;un joueur est retenu.
+        </p>
+      ) : null}
 
       {onglets.length > 1 ? (
         <nav className="flex gap-1.5 overflow-x-auto">
@@ -130,6 +167,40 @@ export async function TableauEnDirect({
       <Arbitres arbitres={direct.arbitres} />
     </section>
   );
+}
+
+function groupeVide(numero: number): GroupeVue {
+  return { numero, nom: nomDeLaPoule(numero), lignes: [], duels: [], joues: 0, total: 0 };
+}
+
+function duelVide(stage: DuelVue["stage"], round: number, slot: number, t: Tournament): DuelVue {
+  const attente =
+    round === 1
+      ? t.format === "poules"
+        ? "Qualifié de poule"
+        : "Place libre"
+      : stage === "perdants"
+        ? "Perdant ou vainqueur à venir"
+        : "Vainqueur à venir";
+  return {
+    id: `apercu-${stage}-${round}-${slot}`,
+    stage,
+    numero: null,
+    attenteA: attente,
+    attenteB: attente,
+    groupe: null,
+    round,
+    slot,
+    a: null,
+    b: null,
+    scoreA: 0,
+    scoreB: 0,
+    raceTo: t.raceTo,
+    status: "attente",
+    gagnant: null,
+    arbitre: null,
+    table: "",
+  };
 }
 
 /** Les arbres à dessiner : principal, perdants, grande finale. */
