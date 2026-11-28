@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Drawer, Field, PageHead, Pill, Select, SubmitButton, Table, Td, TextArea } from "@/components/admin/AdminUI";
 import { ImageField } from "@/components/admin/ImageField";
 import { cloreEvenement, deleteEvent, mettreALaUne, saveEvent } from "@/lib/actions";
@@ -64,6 +65,12 @@ export default async function AdminEvents() {
             </Td>
             <Td>
               <div className="flex items-center gap-2">
+                <Link
+                  href={`/gerant/evenements/${event.id}`}
+                  className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1.5 text-[11px] text-gold-text"
+                >
+                  Billetterie
+                </Link>
                 <details className="relative">
                   <summary className="cursor-pointer rounded-full border border-line px-3 py-1.5 text-[11px] marker:hidden">
                     Éditer

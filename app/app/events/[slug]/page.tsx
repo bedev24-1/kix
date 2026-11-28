@@ -136,7 +136,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       <aside className="hidden lg:sticky lg:top-8 lg:flex lg:flex-col lg:gap-4 lg:rounded-panel lg:border lg:border-line lg:bg-surface lg:p-5">
         <span className="label-caps">Réserver</span>
         <p className="text-[13px] leading-5 text-dim">
-          Place gardée jusqu&apos;à l&apos;heure du check-in. Le pass QR arrive dans « Mes billets ».
+          Réserve ta place. Pour le paiement en espèces, le QR sera activé après validation par la salle.
         </p>
         <TicketButton eventId={event.id} eventTitle={event.title} price={event.price} phone={user.phone} owned={owned} terminee={terminee} libelle={tournoi ? "Billet spectateur" : "Billet d'entrée"} />
         <span className="text-[11px] text-muted">

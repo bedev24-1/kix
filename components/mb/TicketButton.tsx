@@ -55,7 +55,7 @@ export function TicketButton({
     return { ok: true as const, reference: result.reference, instruction: result.instruction };
   };
 
-  /** Payer à l'entrée : la place est gardée, le code part dans « Mes billets ». */
+  /** Réserver la place et régler en espèces au comptoir avant l'activation du QR. */
   function auGuichet() {
     startTransition(async () => {
       const result = await buyTicket(eventId, undefined, "guichet");
@@ -66,7 +66,10 @@ export function TicketButton({
       setOpen(false);
       setTaken(true);
       if (result.free) {
-        notify("Place réservée", { detail: `À régler à l'entrée · code ${result.code}`, tone: "jade" });
+        notify("Place réservée", {
+          detail: `À régler en espèces à la caisse puis à faire valider · code ${result.code}`,
+          tone: "jade",
+        });
       }
       router.push("/app/billets");
     });
@@ -120,7 +123,7 @@ export function TicketButton({
           className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-line text-[13px] font-semibold text-ink"
         >
           {pending ? <Spinner size={15} /> : null}
-          Réserver et payer à l&apos;entrée
+          Réserver · payer en espèces à la caisse
         </button>
       </Sheet>
     </>

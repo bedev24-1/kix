@@ -519,7 +519,7 @@ export async function getAllEvents() {
     .from(events)
     .leftJoin(venues, eq(events.venueId, venues.id))
     // Vendus = payés (valides ou déjà scannés), comme chez le gérant : les
-    // tentatives échouées et les places « à payer à l'entrée » n'en sont pas.
+    // tentatives échouées et les réservations caisse non confirmées n'en sont pas.
     .leftJoin(tickets, and(eq(tickets.eventId, events.id), inArray(tickets.status, ["valid", "used"])))
     // Grouper par `events.id` suffit pour les colonnes d'`events` — Postgres
     // suit la dépendance fonctionnelle depuis une clé primaire. Elle ne
@@ -555,7 +555,7 @@ export async function getVenueEvents(venueId: string) {
       entres: sql<number>`(select count(*) from mb.tickets t
                             where t.event_id = mb.events.id and t.status = 'used')`,
       attente: sql<number>`(select count(*) from mb.tickets t
-                             where t.event_id = mb.events.id and t.status = 'pending')`,
+                             where t.event_id = mb.events.id and t.status in ('pending','guichet'))`,
       recette: sql<number>`(select coalesce(sum(p.amount), 0)
                               from mb.tickets t
                               join mb.payments p on p.reference = t.reference

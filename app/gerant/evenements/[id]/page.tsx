@@ -12,8 +12,10 @@ import { f, fcfa } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { PartageEvenement } from "@/components/tournoi/Partage";
 import { Drawer } from "@/components/admin/AdminUI";
+import { SubmitButton } from "@/components/admin/SubmitButton";
 import { Promouvoir } from "@/components/gerant/Promouvoir";
-import { db, promotions, tarifsPromo } from "@/db";
+import { confirmerPaiementBilletCaisse } from "@/lib/actions";
+import { db, events, promotions, tarifsPromo } from "@/db";
 import { desc, eq } from "drizzle-orm";
 import { VitrineForm } from "@/components/admin/VitrineForm";
 
@@ -24,17 +26,23 @@ const ETAT: Record<string, { label: string; ton: string }> = {
   used: { label: "entré", ton: "border-jade/40 bg-jade/12 text-jade-text" },
   pending: { label: "en attente", ton: "border-warn/40 bg-warn/12 text-warn" },
   failed: { label: "échoué", ton: "border-line bg-surface-2 text-muted" },
-  guichet: { label: "paiera à l'entrée", ton: "border-gold/40 bg-gold/12 text-gold-text" },
+  guichet: { label: "paiement caisse à valider", ton: "border-warn/40 bg-warn/12 text-warn" },
 };
 
 export default async function GerantEvenement({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const manager = await requireRole("manager", "admin");
-  if (!manager.venueId) notFound();
+  const cible = (await db.select({ venueId: events.venueId }).from(events).where(eq(events.id, id)).limit(1))[0];
+  if (
+    !cible?.venueId ||
+    (manager.role !== "admin" && (!manager.venueId || manager.venueId !== cible.venueId))
+  ) {
+    notFound();
+  }
 
-  // On repasse par les événements de la salle : un identifiant deviné dans
-  // l'URL ne doit pas ouvrir l'agenda du voisin.
-  const ligne = (await getVenueEvents(manager.venueId)).find((l) => l.event.id === id);
+  // Le gérant reste limité à sa salle; l'admin peut ouvrir les événements de
+  // toute salle pour confirmer les paiements en caisse.
+  const ligne = (await getVenueEvents(cible.venueId)).find((l) => l.event.id === id);
   if (!ligne) notFound();
 
   const { event, vendus, entres, attente, recette } = ligne;
@@ -50,7 +58,10 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
 
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/gerant/evenements" className="press flex w-fit items-center gap-1.5 text-[13px] text-muted hover:text-ink">
+      <Link
+        href={manager.role === "admin" ? "/admin/evenements" : "/gerant/evenements"}
+        className="press flex w-fit items-center gap-1.5 text-[13px] text-muted hover:text-ink"
+      >
         <ChevronLeftIcon size={15} /> Les événements
       </Link>
 
@@ -163,6 +174,7 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
         <div className="flex flex-col gap-2">
           {participants.map(({ ticket, user, paye }) => {
             const etat = ETAT[ticket.status] ?? ETAT.failed;
+            const especesConfirmees = ticket.reference?.startsWith("guichet:") ?? false;
             return (
               <Card key={ticket.id} shape="panel" className="flex items-center gap-3 p-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-2 text-[12px] font-semibold text-dim">
@@ -174,10 +186,28 @@ export default async function GerantEvenement({ params }: { params: Promise<{ id
                   <span className="text-[12px] text-muted">{displayPhone(user.phone)}</span>
                 </span>
 
-                <span className="flex shrink-0 flex-col items-end gap-1">
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className={cn("rounded-full border px-2.5 py-0.5 text-[10.5px]", etat.ton)}>{etat.label}</span>
-                  <span className="text-[12px] text-muted">{paye ? fcfa(paye) : "gratuit"}</span>
-                </span>
+                  <span className="text-[12px] text-muted">
+                    {paye
+                      ? fcfa(paye)
+                      : especesConfirmees
+                        ? `${fcfa(event.price)} · espèces reçues`
+                        : ticket.status === "guichet"
+                          ? `${fcfa(event.price)} · à confirmer`
+                          : ticket.status === "pending"
+                            ? "paiement en attente"
+                            : event.price === 0
+                              ? "gratuit"
+                              : "—"}
+                  </span>
+                  {ticket.status === "guichet" ? (
+                    <form action={confirmerPaiementBilletCaisse}>
+                      <input type="hidden" name="ticketId" value={ticket.id} />
+                      <SubmitButton>Confirmer les espèces</SubmitButton>
+                    </form>
+                  ) : null}
+                </div>
               </Card>
             );
           })}

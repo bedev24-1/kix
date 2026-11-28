@@ -15,7 +15,7 @@ export const metadata = { title: "Mes billets" };
 
 const ETIQUETTE: Record<string, string> = {
   valid: "Valide",
-  guichet: "À régler à l'entrée",
+  guichet: "Paiement à valider",
   used: "Utilisé",
   pending: "Paiement en attente",
 };
@@ -60,41 +60,49 @@ export default async function BilletsPage() {
                   {event.day} · {event.hours}
                 </span>
               </span>
-              <Chip tone={ticket.status === "valid" || ticket.status === "guichet" ? "gold" : "neutral"}>
+              <Chip tone={ticket.status === "valid" ? "gold" : "neutral"}>
                 {ETIQUETTE[ticket.status] ?? ticket.status}
               </Chip>
             </div>
           </div>
 
           {ticket.status === "pending" ? (
-            // Pas de QR tant que l'argent n'est pas arrivé : il n'ouvrirait rien.
             <p className="p-4 text-[12.5px] text-muted">
               Paiement en cours de validation. Le billet et son QR apparaîtront ici dès la confirmation de
               l&apos;opérateur.
             </p>
-          ) : (
-          <div className="flex items-center gap-4 p-4">
-            <div className="rounded-card bg-white p-2">
-              <QrCode
-                shape={qrShape(
-                  passUrl({ k: "ticket", i: ticket.id, c: ticket.code, u: user.id }, TICKET_TTL),
-                )}
-                size={104}
-              />
-            </div>
-            <div className="flex grow flex-col gap-1.5">
-              <span className="label-caps">Code d&apos;entrée</span>
-              <span className="text-[24px] font-bold tracking-[0.16em]">{ticket.code}</span>
-              <span className="text-[11px] text-muted">
-                {event.address} · billet {f(event.price)}
+          ) : ticket.status === "guichet" ? (
+            <div className="flex items-center gap-4 p-4">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-card bg-surface-2 text-muted">
+                <TicketIcon size={24} />
               </span>
-              {ticket.status === "guichet" ? (
-                <span className="text-[11px] text-gold-text">
-                  Présente ce code à l&apos;entrée et règle {f(event.price)} en espèces.
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <span className="label-caps">Code de réservation</span>
+                <span className="text-[24px] font-bold tracking-[0.16em]">{ticket.code}</span>
+                <span className="text-[11px] leading-5 text-muted">
+                  Présente ce code à la caisse et règle {f(event.price)} en espèces. Le gérant ou l&apos;admin
+                  activera ton QR après confirmation du paiement.
                 </span>
-              ) : null}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-4 p-4">
+              <div className="rounded-card bg-white p-2">
+                <QrCode
+                  shape={qrShape(
+                    passUrl({ k: "ticket", i: ticket.id, c: ticket.code, u: user.id }, TICKET_TTL),
+                  )}
+                  size={104}
+                />
+              </div>
+              <div className="flex grow flex-col gap-1.5">
+                <span className="label-caps">Code d&apos;entrée</span>
+                <span className="text-[24px] font-bold tracking-[0.16em]">{ticket.code}</span>
+                <span className="text-[11px] text-muted">
+                  {event.address} · billet {f(event.price)}
+                </span>
+              </div>
+            </div>
           )}
         </Card>
       ))}

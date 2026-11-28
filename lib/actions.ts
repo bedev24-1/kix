@@ -276,7 +276,7 @@ export async function pollPayment(reference: string): Promise<PaymentState | nul
 
 export type ScanResult =
   | { ok: true; kind: "token"; client: string; venue: string; remaining: number; table: number | null }
-  | { ok: true; kind: "ticket"; client: string; event: string; aEncaisser?: number }
+  | { ok: true; kind: "ticket"; client: string; event: string }
   | { ok: false; error: string };
 
 /**
@@ -386,30 +386,11 @@ export async function scanCode(raw: string, method: "qr" | "code" = "code"): Pro
       .limit(1)
   )[0];
 
-  // Un billet réservé « à payer au guichet » : on l'encaisse à l'entrée. Le
-  // contrôleur voit le montant à demander, le billet passe utilisé, et la
-  // référence « guichet: » le sort de la recette en ligne — cet argent-là est
-  // déjà dans la caisse de la salle.
-  if (ticket && ticket.ticket.status === "guichet") {
-    await db
-      .update(tickets)
-      .set({ status: "used", usedAt: new Date(), reference: `guichet:${ticket.ticket.id}` })
-      .where(eq(tickets.id, ticket.ticket.id));
-    await db.insert(scans).values({
-      id: uid(),
-      kind: "ticket",
-      refId: ticket.ticket.id,
-      code,
-      userId: ticket.user.id,
-      venueId: manager.venueId ?? ticket.event.venueId,
-      managerId: manager.id,
-      method,
-      amount: ticket.event.price,
-    });
-    revalidatePath("/gerant");
-    revalidatePath("/gerant/evenements");
-    revalidatePath("/admin");
-    return { ok: true, kind: "ticket", client: ticket.user.name, event: ticket.event.title, aEncaisser: ticket.event.price };
+  if (ticket && manager.role !== "admin" && (!manager.venueId || manager.venueId !== ticket.event.venueId)) {
+    return { ok: false, error: "Ce billet appartient à une autre salle" };
+  }
+  if (ticket?.ticket.status === "guichet") {
+    return { ok: false, error: "Paiement en espèces non confirmé. Demande au gérant de valider le paiement avant le scan." };
   }
 
   if (ticket) {
@@ -603,9 +584,8 @@ export async function buyTicket(
     return { ok: true, free: true, code };
   }
 
-  // Payer à l'entrée : la place est gardée, le billet porte son code, et le
-  // contrôleur encaisse en le scannant. Un seul billet en attente par personne
-  // et par soirée : sinon on bloquerait la salle à coups de réservations.
+  // La place est gardée en attendant le paiement en espèces au comptoir. Le
+  // gérant ou l'admin confirme la réception avant que le billet soit scannable.
   if (method === "guichet") {
     const deja = (
       await db
@@ -623,7 +603,7 @@ export async function buyTicket(
     await notify(
       user.id,
       `Place réservée · ${event.title}`,
-      `${event.day} · à régler à l'entrée (${event.price.toLocaleString("fr-FR")} F) · code ${code}`,
+      `${event.day} · à régler en espèces à la caisse (${event.price.toLocaleString("fr-FR")} F) puis à faire valider · code ${code}`,
       "event",
       "/app/billets",
     );
@@ -676,6 +656,39 @@ export async function buyTicket(
 
   await db.update(tickets).set({ reference: started.reference }).where(eq(tickets.id, ticketId));
   return { ok: true, free: false, reference: started.reference, instruction: started.instruction, amount: event.price };
+}
+
+/** Le comptoir confirme l'encaissement en espèces avant d'activer le QR. */
+export async function confirmerPaiementBilletCaisse(formData: FormData): Promise<void> {
+  const manager = await requireRole("manager", "admin");
+  const ticketId = String(formData.get("ticketId") ?? "").trim();
+  if (!ticketId) return;
+
+  const ligne = (
+    await db
+      .select({ ticket: tickets, event: events })
+      .from(tickets)
+      .innerJoin(events, eq(tickets.eventId, events.id))
+      .where(eq(tickets.id, ticketId))
+      .limit(1)
+  )[0];
+  if (!ligne || ligne.ticket.status !== "guichet") return;
+  if (manager.role !== "admin" && (!manager.venueId || manager.venueId !== ligne.event.venueId)) return;
+
+  const confirme = await db
+    .update(tickets)
+    .set({ status: "valid", reference: `guichet:${ligne.ticket.id}` })
+    .where(and(eq(tickets.id, ligne.ticket.id), eq(tickets.status, "guichet")))
+    .returning({ id: tickets.id });
+  if (!confirme.length) return;
+
+  revalidatePath(`/gerant/evenements/${ligne.event.id}`);
+  revalidatePath("/gerant/evenements");
+  revalidatePath("/admin/evenements");
+  revalidatePath(`/app/events/${ligne.event.slug}`);
+  revalidatePath("/app/billets");
+  revalidatePath("/gerant");
+  revalidatePath("/admin");
 }
 
 /* ------------------------------------------------------------------ rewards */

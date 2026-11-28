@@ -769,7 +769,7 @@ export const tickets = mb.table(
       .notNull()
       .references(() => users.id),
     code: text("code").notNull(),
-    // pending | valid | used | failed | guichet (place gardée, à régler à l'entrée)
+    // pending | valid | used | failed | guichet (réservation espèces, validation requise avant scan)
     status: text("status").notNull().default("valid"),
     /** Référence du paiement (mb.payments.reference) — nulle pour un billet gratuit. */
     reference: text("reference").unique(),
